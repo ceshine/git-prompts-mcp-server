@@ -2,7 +2,7 @@
 
 This repository provides a Model Context Protocol (MCP) server that offers several commands to generate prompts based on the Git repository's content.
 
-(This repository draws heavy inspiration from [MarkItDown MCP server](https://github.com/KorigamiK/markitdown_mcp_server) and the example [Git MCP server](https://github.com/KorigamiK/git_mcp_server).)
+(This repository draws heavy inspiration from [MarkItDown MCP server](https://github.com/KorigamiK/markitdown_mcp_server) and the example [Git MCP server](https://github.com/modelcontextprotocol/servers/tree/main/src/git).)
 
 
 ## Installation
@@ -35,7 +35,7 @@ Add the following to your `settings.json`:
         "--excludes",
         "**/.gitignore",
         "--format", // format for diff results
-        "json"  // Options: json, text
+        "json"  // options: json, text
       ]
     },
     "settings": {}
