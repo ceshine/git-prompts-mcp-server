@@ -1,5 +1,5 @@
 [project]
-name = "git-prompt-mcp-server"
+name = "git-prompts-mcp-server"
 version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.13"
@@ -20,4 +20,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.scripts]
-git-prompt-mcp-server = "git_prompt_mcp_server:entry_point"
+git-prompts-mcp-server = "git_prompts_mcp_server:entry_point"

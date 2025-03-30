@@ -81,7 +81,7 @@ wheels = [
 ]
 
 [[package]]
-name = "git-prompt-mcp-server"
+name = "git-prompts-mcp-server"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
