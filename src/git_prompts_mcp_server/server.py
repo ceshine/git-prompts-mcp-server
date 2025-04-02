@@ -22,7 +22,20 @@ PROMPTS = {
                 required=True,
             ),
         ],
-    )
+    ),
+    "git-diff": types.Prompt(
+        name="git-diff",
+        description="Generate a diff between the HEAD and the ancestor branch or commit",
+        arguments=[
+            # Note: Zed only supports one prompt argument
+            # Reference: https://github.com/zed-industries/zed/issues/21944
+            types.PromptArgument(
+                name="ancestor",
+                description="The ancestor branch or commit",
+                required=True,
+            ),
+        ],
+    ),
 }
 
 
@@ -108,6 +121,37 @@ async def run(repository: Path, excludes: list[str] = [], json_format: bool = Tr
                 prompt = (
                     diff_str
                     + f"\n\n Above is the diff results for a pull request in {'the JSON format' if json_format else 'plain text'}. Please create descriptions for this pull request."
+                )
+                return types.GetPromptResult(
+                    messages=[
+                        types.PromptMessage(
+                            role="user",
+                            content=types.TextContent(
+                                type="text",
+                                text=prompt,
+                            ),
+                        )
+                    ]
+                )
+            except Exception as e:
+                raise ValueError(f"Error generating the final prompt: {str(e)}")
+        elif name == "git-diff":
+            try:
+                if not arguments:
+                    raise ValueError("Arguments required")
+
+                diff_results = _get_diff_results(
+                    repo, repo.commit(arguments.get("ancestor")), repo.commit(arguments.get("HEAD")), excludes
+                )
+
+                if json_format is True:
+                    diff_str = _format_diff_results_as_json(diff_results)
+                else:
+                    diff_str = _format_diff_results_as_plain_text(diff_results)
+
+                prompt = (
+                    diff_str
+                    + f"\n\n Above is the diff results for a pull request in {'the JSON format' if json_format else 'plain text'}."
                 )
                 return types.GetPromptResult(
                     messages=[
