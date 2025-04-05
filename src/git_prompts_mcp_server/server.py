@@ -138,7 +138,7 @@ async def run(repository: Path, excludes: list[str] = [], json_format: bool = Tr
                         "Your description should include, but is not limited to, the following sections:\n\n"
                         "- **Overview of the Changes:** A concise summary of what was modified.\n"
                         "- **Key Changes:** A list of the main changes that were implemented.\n"
-                        "- **New Dependencies Added:** Identify any new dependencies that have been introduced.\n"
+                        "- (Only include when applicable) **New Dependencies Added:** Identify any new dependencies that have been introduced.\n"
                     )
 
                 return types.GetPromptResult(
