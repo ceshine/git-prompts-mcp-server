@@ -76,7 +76,12 @@ def _format_diff_results_as_json(diff_results: list[git.Diff]) -> str:
 def _get_diff_results(
     source_commit: git.Commit, target_commit: git.Commit | None, excludes: list[str]
 ) -> list[git.Diff]:
-    diff_results = source_commit.diff(target_commit, create_patch=True)
+    if target_commit is None:
+        # Note: source_commit.diff() compares source with the index (staged changes)
+        #       source_commit.diff(None) compares source with the working tree
+        diff_results = source_commit.diff(create_patch=True)
+    else:
+        diff_results = source_commit.diff(target_commit, create_patch=True)
 
     for exclude_pattern in excludes:
         diff_results = [
