@@ -47,13 +47,16 @@ Add the following to your `settings.json`:
 
 The server responds to the following commands:
 
-- `/generate-pr-desc <ancestor_branch_or_commit>`: Generate PR Description based on the diff between the HEAD and the ancestor branch or commit.
+1. `/git-diff <ancestor_branch_or_commit>`: Populate the diff results between HEAD and the specified ancestor branch or commit.
+2. `/generate-pr-desc <ancestor_branch_or_commit>`: Generate a pull request description based on the diff results between HEAD and the specified ancestor branch or commit.
+  - Note: This is largely the same as `/git-diff`, but it includes instructions for generating a pull request description at the end of the output.
+3. `/git-cached-diff`: Populate the diff results for the staged changes and HEAD.
 
-Example:
+Examples:
 
-```bash
-/generate-pr-desc main
-```
+1. `/generate-pr-desc main`
+2. `/git-diff dev`
+3. `/git-cached-diff`
 
 ## License
 
