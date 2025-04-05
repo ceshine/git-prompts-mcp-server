@@ -109,7 +109,7 @@ async def run(repository: Path, excludes: list[str] = [], json_format: bool = Tr
         if name not in PROMPTS:
             raise ValueError(f"Prompt not found: {name}")
 
-        if name == "generate-pr-desc":
+        if name in ("generate-pr-desc", "git-diff"):
             if not arguments:
                 raise ValueError("Arguments required")
 
@@ -125,39 +125,17 @@ async def run(repository: Path, excludes: list[str] = [], json_format: bool = Tr
 
                 prompt = (
                     diff_str
-                    + f"\n\nAbove is the diff results for a pull request in {'the JSON format' if json_format else 'plain text'}. Please create descriptions for this pull request."
+                    + f"\n\nAbove is the diff results between HEAD and {arguments.get('ancestor')} in {'the JSON format' if json_format else 'plain text'}.\n"
                 )
-                return types.GetPromptResult(
-                    messages=[
-                        types.PromptMessage(
-                            role="user",
-                            content=types.TextContent(
-                                type="text",
-                                text=prompt,
-                            ),
-                        )
-                    ]
-                )
-            except Exception as e:
-                raise ValueError(f"Error generating the final prompt: {str(e)}")
-        elif name == "git-diff":
-            if not arguments:
-                raise ValueError("Arguments required")
+                if name == "generate-pr-desc":
+                    prompt += (
+                        "\nPlease provide a detailed description of the above changes proposed by a pull request. "
+                        "Your description should include, but is not limited to, the following sections:\n\n"
+                        "- **Overview of the Changes:** A concise summary of what was modified.\n"
+                        "- **Key Changes:** A list of the main changes that were implemented.\n"
+                        "- **New Dependencies Added:** Identify any new dependencies that have been introduced.\n"
+                    )
 
-            diff_results = _get_diff_results(
-                repo.commit(arguments.get("ancestor")), repo.commit(arguments.get("HEAD")), excludes
-            )
-
-            try:
-                if json_format is True:
-                    diff_str = _format_diff_results_as_json(diff_results)
-                else:
-                    diff_str = _format_diff_results_as_plain_text(diff_results)
-
-                prompt = (
-                    diff_str
-                    + f"\n\nAbove is the diff results between HEAD and {arguments.get('ancestor')} in {'the JSON format' if json_format else 'plain text'}."
-                )
                 return types.GetPromptResult(
                     messages=[
                         types.PromptMessage(
