@@ -9,6 +9,8 @@ import git
 import mcp.types as types
 from mcp.server import Server, stdio, models, NotificationOptions
 
+from .version import __version__
+
 PROMPTS = {
     "generate-pr-desc": types.Prompt(
         name="generate-pr-desc",
@@ -99,7 +101,7 @@ async def run(repository: Path, excludes: list[str] = [], json_format: bool = Tr
         repo = git.Repo(repository)
     except git.InvalidGitRepositoryError:
         logger.error(f"{repository} is not a valid Git repository")
-        os.system("notify-send 'Git Prompt MCP server failed to start'")
+        os.system("notify-send 'Git Prompts MCP server failed to start'")
         return
 
     # Initialize server
@@ -189,7 +191,7 @@ async def run(repository: Path, excludes: list[str] = [], json_format: bool = Tr
             write_stream,
             models.InitializationOptions(
                 server_name="git_prompt_mcp_server",
-                server_version="0.0.1",
+                server_version=__version__,
                 capabilities=app.get_capabilities(
                     notification_options=NotificationOptions(),
                     experimental_capabilities={},

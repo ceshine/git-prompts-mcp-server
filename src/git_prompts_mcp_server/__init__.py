@@ -16,7 +16,7 @@ class Format(str, Enum):
 
 
 def _main(repository: Path, excludes: list[str] = [], format: Format = Format.TEXT) -> None:
-    os.system("notify-send 'Git Prompt MCP server is starting'")
+    os.system("notify-send 'Git Prompts MCP server is starting'")
     asyncio.run(run(repository, excludes, json_format=format == Format.JSON))
 
 
@@ -27,7 +27,7 @@ def entry_point():
         datefmt="%Y-%m-%dT%H:%M:%S%z",
     )
     # Export log to a temporary file under /tmp
-    tmp_log_file = Path(f"/tmp/git_prompt_mcp_{datetime.now().strftime('%Y%m%d%H%M%S')}.log")
+    tmp_log_file = Path(f"/tmp/git_prompts_mcp_{datetime.now().strftime('%Y%m%d%H%M%S')}.log")
     file_handler = logging.FileHandler(tmp_log_file)
     file_handler.setFormatter(logging.Formatter("[%(asctime)s][%(levelname)s][%(name)s] %(message)s"))
     logging.getLogger().addHandler(file_handler)

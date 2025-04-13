@@ -21,3 +21,7 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 git-prompts-mcp-server = "git_prompts_mcp_server:entry_point"
+
+[[project.authors]]
+name = "Ceshine Lee"
+email = "shuanck@gmail.com"
