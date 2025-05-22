@@ -6,46 +6,12 @@ from pathlib import Path
 from typing import cast
 
 import git
-import mcp.types as types
-from mcp.server import Server, stdio, models, NotificationOptions
+from fastmcp import FastMCP
+from fastmcp.prompts.prompt import PromptMessage, TextContent
 
 from .version import __version__
 
-PROMPTS = {
-    "generate-pr-desc": types.Prompt(
-        name="generate-pr-desc",
-        description="Generate PR Description based on the diff between the HEAD and the ancestor branch or commit",
-        arguments=[
-            # Note: Zed only supports one prompt argument
-            # Reference: https://github.com/zed-industries/zed/issues/21944
-            types.PromptArgument(
-                name="ancestor",
-                description="The ancestor branch or commit",
-                required=True,
-            ),
-        ],
-    ),
-    "git-diff": types.Prompt(
-        name="git-diff",
-        description="Generate a diff between the HEAD and the ancestor branch or commit",
-        arguments=[
-            # Note: Zed only supports one prompt argument
-            # Reference: https://github.com/zed-industries/zed/issues/21944
-            types.PromptArgument(
-                name="ancestor",
-                description="The ancestor branch or commit",
-                required=True,
-            ),
-        ],
-    ),
-    "git-cached-diff": types.Prompt(
-        name="git-cached-diff",
-        description="Generate a diff between the files in the staging area (the index) and the HEAD",
-        arguments=[],
-    ),
-}
-
-
+# Helper functions remain the same
 def _format_diff_results_as_plain_text(diff_results: list[git.Diff]) -> str:
     return "\n".join(
         [
@@ -105,96 +71,101 @@ async def run(repository: Path, excludes: list[str] = [], json_format: bool = Tr
         return
 
     # Initialize server
-    app = Server("document-conversion-server")
+    app = FastMCP(name="git_prompt_mcp_server")
 
-    @app.list_prompts()
-    async def list_prompts() -> list[types.Prompt]:
-        return list(PROMPTS.values())
+    @app.prompt(
+        name="generate-pr-desc",
+        description="Generate PR Description based on the diff between the HEAD and the ancestor branch or commit",
+    )
+    async def generate_pr_desc_prompt(ancestor: str) -> PromptMessage:
+        if not ancestor:
+            raise ValueError("Ancestor argument required")
 
-    @app.get_prompt()
-    async def get_prompt(name: str, arguments: dict[str, str] | None = None) -> types.GetPromptResult:
-        if name not in PROMPTS:
-            raise ValueError(f"Prompt not found: {name}")
+        diff_results = _get_diff_results(repo.commit(ancestor), repo.head.commit, excludes)
 
-        if name in ("generate-pr-desc", "git-diff"):
-            if not arguments:
-                raise ValueError("Arguments required")
+        try:
+            if json_format is True:
+                diff_str = _format_diff_results_as_json(diff_results)
+            else:
+                diff_str = _format_diff_results_as_plain_text(diff_results)
 
-            diff_results = _get_diff_results(
-                repo.commit(arguments.get("ancestor")), repo.commit(arguments.get("HEAD")), excludes
+            prompt_text = (
+                diff_str
+                + f"\n\nAbove is the diff results between HEAD and {ancestor} in {'the JSON format' if json_format else 'plain text'}.\n"
+                + (
+                    "\nPlease provide a detailed description of the above changes proposed by a pull request. "
+                    "Your description should include, but is not limited to, the following sections:\n\n"
+                    "- **Overview of the Changes:** A concise summary of what was modified.\n"
+                    "- **Key Changes:** A list of the main changes that were implemented.\n"
+                    "- (Only include when applicable) **New Dependencies Added:** Identify any new dependencies that have been introduced.\n"
+                )
             )
-
-            try:
-                if json_format is True:
-                    diff_str = _format_diff_results_as_json(diff_results)
-                else:
-                    diff_str = _format_diff_results_as_plain_text(diff_results)
-
-                prompt = (
-                    diff_str
-                    + f"\n\nAbove is the diff results between HEAD and {arguments.get('ancestor')} in {'the JSON format' if json_format else 'plain text'}.\n"
-                )
-                if name == "generate-pr-desc":
-                    prompt += (
-                        "\nPlease provide a detailed description of the above changes proposed by a pull request. "
-                        "Your description should include, but is not limited to, the following sections:\n\n"
-                        "- **Overview of the Changes:** A concise summary of what was modified.\n"
-                        "- **Key Changes:** A list of the main changes that were implemented.\n"
-                        "- (Only include when applicable) **New Dependencies Added:** Identify any new dependencies that have been introduced.\n"
-                    )
-
-                return types.GetPromptResult(
-                    messages=[
-                        types.PromptMessage(
-                            role="user",
-                            content=types.TextContent(
-                                type="text",
-                                text=prompt,
-                            ),
-                        )
-                    ]
-                )
-            except Exception as e:
-                raise ValueError(f"Error generating the final prompt: {str(e)}")
-
-        elif name == "git-cached-diff":
-            diff_results = _get_diff_results(repo.head.commit, None, excludes)
-
-            try:
-                if json_format is True:
-                    diff_str = _format_diff_results_as_json(diff_results)
-                else:
-                    diff_str = _format_diff_results_as_plain_text(diff_results)
-
-                prompt = (
-                    diff_str
-                    + f"\n\nAbove is the staged changes in {'the JSON format' if json_format else 'plain text'}."
-                )
-                return types.GetPromptResult(
-                    messages=[
-                        types.PromptMessage(
-                            role="user",
-                            content=types.TextContent(
-                                type="text",
-                                text=prompt,
-                            ),
-                        )
-                    ]
-                )
-            except Exception as e:
-                raise ValueError(f"Error generating the final prompt: {str(e)}")
-        raise ValueError("Prompt implementation not found")
-
-    async with stdio.stdio_server() as (read_stream, write_stream):
-        await app.run(
-            read_stream,
-            write_stream,
-            models.InitializationOptions(
-                server_name="git_prompt_mcp_server",
-                server_version=__version__,
-                capabilities=app.get_capabilities(
-                    notification_options=NotificationOptions(),
-                    experimental_capabilities={},
+            return PromptMessage(
+                role="user",
+                content=TextContent(
+                    type="text",
+                    text=prompt_text,
                 ),
-            ),
-        )
+            )
+        except Exception as e:
+            raise ValueError(f"Error generating the final prompt for generate-pr-desc: {str(e)}")
+
+    @app.prompt(
+        name="git-diff",
+        description="Generate a diff between the HEAD and the ancestor branch or commit",
+    )
+    async def git_diff_prompt(ancestor: str) -> PromptMessage:
+        if not ancestor:
+            raise ValueError("Ancestor argument required")
+
+        diff_results = _get_diff_results(repo.commit(ancestor), repo.head.commit, excludes)
+        try:
+            if json_format is True:
+                diff_str = _format_diff_results_as_json(diff_results)
+            else:
+                diff_str = _format_diff_results_as_plain_text(diff_results)
+
+            prompt_text = (
+                diff_str
+                + f"\n\nAbove is the diff results between HEAD and {ancestor} in {'the JSON format' if json_format else 'plain text'}.\n"
+            )
+            return PromptMessage(
+                role="user",
+                content=TextContent(
+                    type="text",
+                    text=prompt_text,
+                ),
+            )
+        except Exception as e:
+            raise ValueError(f"Error generating the final prompt for git-diff: {str(e)}")
+
+    @app.prompt(
+        name="git-cached-diff",
+        description="Generate a diff between the files in the staging area (the index) and the HEAD",
+    )
+    async def git_cached_diff_prompt() -> PromptMessage:
+        diff_results = _get_diff_results(repo.head.commit, None, excludes)
+        try:
+            if json_format is True:
+                diff_str = _format_diff_results_as_json(diff_results)
+            else:
+                diff_str = _format_diff_results_as_plain_text(diff_results)
+
+            prompt_text = (
+                diff_str
+                + f"\n\nAbove is the staged changes in {'the JSON format' if json_format else 'plain text'}."
+            )
+            return PromptMessage(
+                role="user",
+                content=TextContent(
+                    type="text",
+                    text=prompt_text,
+                ),
+            )
+        except Exception as e:
+            raise ValueError(f"Error generating the final prompt for git-cached-diff: {str(e)}")
+
+    # FastMCP.run() uses stdio transport by default.
+    # Server name is set in the FastMCP constructor.
+    # Server version is not explicitly passed to run() in fastmcp.
+    await app.run()
