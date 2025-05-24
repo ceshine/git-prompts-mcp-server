@@ -4,6 +4,16 @@ This repository provides a Model Context Protocol (MCP) server that offers sever
 
 (This repository draws heavy inspiration from [MarkItDown MCP server](https://github.com/KorigamiK/markitdown_mcp_server) and the example [Git MCP server](https://github.com/modelcontextprotocol/servers/tree/main/src/git).)
 
+Here's another MCP server project of mine: [ceshine/jira-prompts-mcp-server](https://github.com/ceshine/jira-prompts-mcp-server)
+
+### 0.1.0
+
+* Migrate from the low-level [mcp package](https://github.com/modelcontextprotocol/python-sdk) to the [FastMCP](https://github.com/jlowin/fastmcp?tab=readme-ov-file) package.
+* Add a CLI for testing the server.
+
+### 0.0.1
+
+The initial release with two prompts implemented: `git-cached-diff`, `git-diff`, `generate-pr-desc`
 
 ## Installation
 
@@ -59,6 +69,18 @@ Examples:
 1. `/generate-pr-desc main`
 2. `/git-diff dev`
 3. `/git-cached-diff`
+
+
+### Testing the server using the CLI
+
+Prerequisities: configuring the required environment variables (`GIT_REPOSITORY`, `GIT_OUTPUT_FORMAT`, `GIT_EXCLUDES`)
+
+You can quickly test the MCP server using the CLI. Below are some example commands:
+
+* `uv run python -m git_prompts_mcp_server.cli git-diff main`
+* `uv run python -m jira_prompts_mcp_server.cli git-cached-diff`
+* `uv run python -m jira_prompts_mcp_server.cli generate-pr-desc main`
+
 
 ## License
 
