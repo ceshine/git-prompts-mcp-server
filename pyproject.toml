@@ -5,7 +5,7 @@ description = "Add your description here"
 requires-python = ">=3.13"
 dependencies = [
     "gitpython>=3.1.44",
-    "mcp>=1.6.0",
+    "fastmcp>=2.0,<3.0",
     "pydantic>=2.11.1",
     "typer>=0.15.2",
 ]

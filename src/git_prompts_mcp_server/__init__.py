@@ -1,5 +1,4 @@
 import os
-import asyncio
 import logging
 from enum import Enum
 from pathlib import Path
@@ -7,7 +6,8 @@ from datetime import datetime
 
 import typer
 
-from .server import run
+from .server import APP
+from .version import __version__
 
 
 class Format(str, Enum):
@@ -16,8 +16,12 @@ class Format(str, Enum):
 
 
 def _main(repository: Path, excludes: list[str] = [], format: Format = Format.TEXT) -> None:
-    os.system("notify-send 'Git Prompts MCP server is starting'")
-    asyncio.run(run(repository, excludes, json_format=format == Format.JSON))
+    os.system(f"notify-send 'Git Prompts MCP server version {__version__} is starting'")
+    os.environ["GIT_REPOSITORY"] = str(repository.resolve())
+    assert all(("," not in x for x in excludes)), "Excluded item cannot contain commas"
+    os.environ["GIT_EXCLUDES"] = ",".join(excludes)
+    os.environ["GIT_OUTPUT_FORMAT"] = format.value
+    APP.run()
 
 
 def entry_point():
