@@ -161,6 +161,35 @@ class GitMethodCollection:
         except Exception as e:
             raise ValueError(f"Error generating the final prompt for git-cached-diff: {str(e)}")
 
+    async def get_commit_messages_prompt(
+        self, ancestor: str = Field(..., description="The ancestor commit hash or branch name")
+    ) -> PromptMessage:
+        if not ancestor:
+            raise ValueError("Ancestor argument required")
+
+        try:
+            commits = list(self.repo.iter_commits(rev=f"{ancestor}..HEAD"))
+            if not commits:
+                commit_messages = f"No commits found between {ancestor} and HEAD."
+            else:
+                commit_messages = "\n".join([commit.message.strip() for commit in commits])
+            
+            prompt_text = (
+                f"Commit messages between {ancestor} and HEAD:\n"
+                + commit_messages
+            )
+            return PromptMessage(
+                role="user",
+                content=TextContent(
+                    type="text",
+                    text=prompt_text,
+                ),
+            )
+        except git.GitCommandError as e:
+            raise ValueError(f"Error executing Git command: {str(e)}")
+        except Exception as e:
+            raise ValueError(f"Error generating the final prompt for get-commit-messages: {str(e)}")
+
 
 GIT_METHOD_COLLETION = GitMethodCollection()
 APP.add_prompt(
@@ -177,4 +206,9 @@ APP.add_prompt(
     GIT_METHOD_COLLETION.git_cached_diff_prompt,
     name="git-cached-diff",
     description="Generate a diff between the files in the staging area (the index) and the HEAD",
+)
+APP.add_prompt(
+    GIT_METHOD_COLLETION.get_commit_messages_prompt,
+    name="get-commit-messages",
+    description="Get commit messages between the ancestor and HEAD",
 )
