@@ -2,16 +2,20 @@ import os
 import json
 import logging
 from fnmatch import fnmatch
-from pathlib import Path
 from typing import cast
 
 import git
 from fastmcp import FastMCP
-from fastmcp.prompts.prompt import PromptMessage, TextContent
+from pydantic import Field
+from mcp.types import PromptMessage, TextContent
 
 from .version import __version__
 
-# Helper functions remain the same
+# Initialize server
+APP = FastMCP(name="git_prompt_mcp_server")
+LOGGER = logging.getLogger(__name__)
+
+
 def _format_diff_results_as_plain_text(diff_results: list[git.Diff]) -> str:
     return "\n".join(
         [
@@ -60,38 +64,36 @@ def _get_diff_results(
     return diff_results
 
 
-async def run(repository: Path, excludes: list[str] = [], json_format: bool = True):
-    logger = logging.getLogger(__name__)
+class GitMethodCollection:
+    def __init__(self):
+        repository = os.environ["GIT_REPOSITORY"]
+        try:
+            self.repo = git.Repo(repository)
+        except git.InvalidGitRepositoryError:
+            LOGGER.error(f"{repository} is not a valid Git repository")
+            os.system(f"notify-send 'Git Prompts MCP server version {__version__} failed to start'")
+            return
 
-    try:
-        repo = git.Repo(repository)
-    except git.InvalidGitRepositoryError:
-        logger.error(f"{repository} is not a valid Git repository")
-        os.system("notify-send 'Git Prompts MCP server failed to start'")
-        return
+        self.excludes = os.environ["GIT_EXCLUDES"].split(",")
+        self.json_format = os.environ["GIT_OUTPUT_FORMAT"].lower() == "json"
 
-    # Initialize server
-    app = FastMCP(name="git_prompt_mcp_server")
-
-    @app.prompt(
-        name="generate-pr-desc",
-        description="Generate PR Description based on the diff between the HEAD and the ancestor branch or commit",
-    )
-    async def generate_pr_desc_prompt(ancestor: str) -> PromptMessage:
+    async def generate_pr_desc_prompt(
+        self, ancestor: str = Field(..., description="The ancestor commit hash or branch name")
+    ) -> PromptMessage:
         if not ancestor:
             raise ValueError("Ancestor argument required")
 
-        diff_results = _get_diff_results(repo.commit(ancestor), repo.head.commit, excludes)
+        diff_results = _get_diff_results(self.repo.commit(ancestor), self.repo.head.commit, self.excludes)
 
         try:
-            if json_format is True:
+            if self.json_format is True:
                 diff_str = _format_diff_results_as_json(diff_results)
             else:
                 diff_str = _format_diff_results_as_plain_text(diff_results)
 
             prompt_text = (
                 diff_str
-                + f"\n\nAbove is the diff results between HEAD and {ancestor} in {'the JSON format' if json_format else 'plain text'}.\n"
+                + f"\n\nAbove is the diff results between HEAD and {ancestor} in {'the JSON format' if self.json_format else 'plain text'}.\n"
                 + (
                     "\nPlease provide a detailed description of the above changes proposed by a pull request. "
                     "Your description should include, but is not limited to, the following sections:\n\n"
@@ -110,24 +112,22 @@ async def run(repository: Path, excludes: list[str] = [], json_format: bool = Tr
         except Exception as e:
             raise ValueError(f"Error generating the final prompt for generate-pr-desc: {str(e)}")
 
-    @app.prompt(
-        name="git-diff",
-        description="Generate a diff between the HEAD and the ancestor branch or commit",
-    )
-    async def git_diff_prompt(ancestor: str) -> PromptMessage:
+    async def git_diff_prompt(
+        self, ancestor: str = Field(..., description="The ancestor commit hash or branch name")
+    ) -> PromptMessage:
         if not ancestor:
             raise ValueError("Ancestor argument required")
 
-        diff_results = _get_diff_results(repo.commit(ancestor), repo.head.commit, excludes)
+        diff_results = _get_diff_results(self.repo.commit(ancestor), self.repo.head.commit, self.excludes)
         try:
-            if json_format is True:
+            if self.json_format is True:
                 diff_str = _format_diff_results_as_json(diff_results)
             else:
                 diff_str = _format_diff_results_as_plain_text(diff_results)
 
             prompt_text = (
                 diff_str
-                + f"\n\nAbove is the diff results between HEAD and {ancestor} in {'the JSON format' if json_format else 'plain text'}.\n"
+                + f"\n\nAbove is the diff results between HEAD and {ancestor} in {'the JSON format' if self.json_format else 'plain text'}.\n"
             )
             return PromptMessage(
                 role="user",
@@ -139,21 +139,17 @@ async def run(repository: Path, excludes: list[str] = [], json_format: bool = Tr
         except Exception as e:
             raise ValueError(f"Error generating the final prompt for git-diff: {str(e)}")
 
-    @app.prompt(
-        name="git-cached-diff",
-        description="Generate a diff between the files in the staging area (the index) and the HEAD",
-    )
-    async def git_cached_diff_prompt() -> PromptMessage:
-        diff_results = _get_diff_results(repo.head.commit, None, excludes)
+    async def git_cached_diff_prompt(self) -> PromptMessage:
+        diff_results = _get_diff_results(self.repo.head.commit, None, self.excludes)
         try:
-            if json_format is True:
+            if self.json_format is True:
                 diff_str = _format_diff_results_as_json(diff_results)
             else:
                 diff_str = _format_diff_results_as_plain_text(diff_results)
 
             prompt_text = (
                 diff_str
-                + f"\n\nAbove is the staged changes in {'the JSON format' if json_format else 'plain text'}."
+                + f"\n\nAbove is the staged changes in {'the JSON format' if self.json_format else 'plain text'}."
             )
             return PromptMessage(
                 role="user",
@@ -165,7 +161,20 @@ async def run(repository: Path, excludes: list[str] = [], json_format: bool = Tr
         except Exception as e:
             raise ValueError(f"Error generating the final prompt for git-cached-diff: {str(e)}")
 
-    # FastMCP.run() uses stdio transport by default.
-    # Server name is set in the FastMCP constructor.
-    # Server version is not explicitly passed to run() in fastmcp.
-    await app.run()
+
+GIT_METHOD_COLLETION = GitMethodCollection()
+APP.add_prompt(
+    GIT_METHOD_COLLETION.generate_pr_desc_prompt,
+    name="generate-pr-desc",
+    description="Generate PR Description based on the diff between the HEAD and the ancestor branch or commit",
+)
+APP.add_prompt(
+    GIT_METHOD_COLLETION.git_diff_prompt,
+    name="git-diff",
+    description="Generate a diff between the HEAD and the ancestor branch or commit",
+)
+APP.add_prompt(
+    GIT_METHOD_COLLETION.git_cached_diff_prompt,
+    name="git-cached-diff",
+    description="Generate a diff between the files in the staging area (the index) and the HEAD",
+)

@@ -30,10 +30,12 @@ Add the following to your `settings.json`:
         "run",
         "git-prompts-mcp-server",
         "/path/to/repo/", // parent folder of the .git directory
-        "--excludes", // exclude files and directories from diff results
-        "**/uv.lock",
+        "--excludes", // exclude files and directories from diff results (the server use fnmatch in the backend)
+        "*/uv.lock",
         "--excludes",
-        "**/.gitignore",
+        "uv.lock",
+        "--excludes",
+        ".gitignore",
         "--format", // format for diff results
         "json"  // options: json, text
       ]
