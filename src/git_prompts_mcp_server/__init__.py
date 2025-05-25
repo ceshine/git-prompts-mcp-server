@@ -6,7 +6,6 @@ from datetime import datetime
 
 import typer
 
-from .server import APP
 from .version import __version__
 
 
@@ -21,6 +20,9 @@ def _main(repository: Path, excludes: list[str] = [], format: Format = Format.TE
     assert all(("," not in x for x in excludes)), "Excluded item cannot contain commas"
     os.environ["GIT_EXCLUDES"] = ",".join(excludes)
     os.environ["GIT_OUTPUT_FORMAT"] = format.value
+
+    from .server import APP
+
     APP.run()
 
 
