@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ceshine-git-prompts-mcp-server-badge.png)](https://mseep.ai/app/ceshine-git-prompts-mcp-server)
+
 # Git Prompts MCP Server
 
 This repository provides a Model Context Protocol (MCP) server that offers several commands to generate prompts based on the Git repository's content.
