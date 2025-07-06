@@ -1,11 +1,10 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ceshine-git-prompts-mcp-server-badge.png)](https://mseep.ai/app/ceshine-git-prompts-mcp-server)
-
 # Git Prompts MCP Server
 
 This repository provides a Model Context Protocol (MCP) server that offers several commands to generate prompts based on the Git repository's content.
 
 (This repository draws heavy inspiration from [MarkItDown MCP server](https://github.com/KorigamiK/markitdown_mcp_server) and the example [Git MCP server](https://github.com/modelcontextprotocol/servers/tree/main/src/git).)
 
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ceshine-git-prompts-mcp-server-badge.png)](https://mseep.ai/app/ceshine-git-prompts-mcp-server)
 
 ## Installation
 
@@ -24,6 +23,7 @@ Add the following to your `settings.json`:
 ```json
 "context_servers": {
   "git_prompt_mcp": {
+    "source": "custom",  // This is required for newer versions of Zed, starting with version 0.193.x.
     "command": {
       "path": "uv",
       "args": [
