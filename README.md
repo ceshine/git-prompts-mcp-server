@@ -20,10 +20,41 @@ This repository provides a Model Context Protocol (MCP) server that offers sever
 
 Add the following to your `settings.json`:
 
+#### Since Zed version 0.194.3
+
+* Source of the change: "Use standardised format for configuring MCP Servers" ([#33539](https://github.com/zed-industries/zed/pull/33539))
+
 ```json
 "context_servers": {
   "git_prompt_mcp": {
-    "source": "custom",  // This is required for newer versions of Zed, starting with version 0.193.x.
+    "source": "custom",
+    "command": "uv",
+    "args": [
+    "--directory",
+    "/path/to/local/git_prompts_mcp_server",
+    "run",
+    "git-prompts-mcp-server",
+    "/path/to/repo/", // parent folder of the .git directory
+    "--excludes", // exclude files and directories from diff results (the server use fnmatch in the backend)
+    "*/uv.lock",
+    "--excludes",
+    "uv.lock",
+    "--excludes",
+    ".gitignore",
+    "--format", // format for diff results
+    "json"  // options: json, text
+    ],
+    "env": {}
+  }
+}
+```
+
+#### Prior to Zed version 0.194.3
+
+```json
+"context_servers": {
+  "git_prompt_mcp": {
+    "source": "custom",  // This is required for Zed version 0.193.x.
     "command": {
       "path": "uv",
       "args": [
