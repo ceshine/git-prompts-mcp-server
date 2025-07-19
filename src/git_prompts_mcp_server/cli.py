@@ -30,6 +30,16 @@ def git_cached_diff():
 
 
 @TYPER_APP.command()
+def git_commit_messages(ancestor: str):
+    async def _internal_func():
+        async with CLIENT:
+            result = await CLIENT.get_prompt("git-commit-messages", {"ancestor": ancestor})
+            print(result.messages[0].content.text)  # type: ignore
+
+    asyncio.run(_internal_func())
+
+
+@TYPER_APP.command()
 def git_diff(ancestor: str):
     async def _internal_func():
         async with CLIENT:

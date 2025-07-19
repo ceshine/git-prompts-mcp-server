@@ -2,6 +2,7 @@ import os
 import json
 import logging
 from fnmatch import fnmatch
+from datetime import timezone
 from typing import cast
 
 import git
@@ -88,12 +89,14 @@ class GitMethodCollection:
         try:
             if self.json_format is True:
                 diff_str = _format_diff_results_as_json(diff_results)
+                format_str = "the JSON format"
             else:
                 diff_str = _format_diff_results_as_plain_text(diff_results)
+                format_str = "plain text"
 
             prompt_text = (
                 diff_str
-                + f"\n\nAbove is the diff results between HEAD and {ancestor} in {'the JSON format' if self.json_format else 'plain text'}.\n"
+                + f"\n\nAbove is the diff results between HEAD and {ancestor} in {format_str}.\n"
                 + (
                     "\nPlease provide a detailed description of the above changes proposed by a pull request. "
                     "Your description should include, but is not limited to, the following sections:\n\n"
@@ -161,6 +164,58 @@ class GitMethodCollection:
         except Exception as e:
             raise ValueError(f"Error generating the final prompt for git-cached-diff: {str(e)}")
 
+    async def git_commit_messages_prompt(
+        self, ancestor: str = Field(..., description="The ancestor commit hash or branch name")
+    ) -> PromptMessage:
+        if not ancestor:
+            raise ValueError("Ancestor argument required")
+
+        try:
+            commits = list(self.repo.iter_commits(rev=f"{ancestor}..HEAD"))
+            if self.json_format is False:
+                if not commits:
+                    prompt_text = f"No commits found between {ancestor} and HEAD."
+                else:
+                    commit_messages = ("\n\n" + "-" * 10 + "\n\n").join(
+                        [
+                            f"{commit.hexsha} by {str(commit.author)} at {commit.authored_datetime.astimezone(timezone.utc).isoformat()}\n\n{str(commit.message).strip()}"
+                            for commit in commits
+                        ]
+                    )
+                    prompt_text = (
+                        f"Commit messages between {ancestor} and HEAD:\n" + "-" * 10 + "\n\n" + commit_messages
+                    )
+            else:
+                if not commits:
+                    prompt_text = json.dumps({"error_message": f"No commits found between {ancestor} and HEAD."})
+                else:
+                    commit_messages = [
+                        {
+                            "hexsha": commit.hexsha,
+                            "author": str(commit.author),
+                            "create_time": commit.authored_datetime.astimezone(timezone.utc).isoformat(),
+                            "message": str(commit.message).strip(),
+                        }
+                        for commit in commits
+                    ]
+                    prompt_text = json.dumps(
+                        commit_messages,
+                        indent=2,
+                        ensure_ascii=False,
+                    )
+
+            return PromptMessage(
+                role="user",
+                content=TextContent(
+                    type="text",
+                    text=prompt_text,
+                ),
+            )
+        except git.GitCommandError as e:
+            raise ValueError(f"Error executing Git command: {str(e)}")
+        except Exception as e:
+            raise ValueError(f"Error generating the final prompt for get-commit-messages: {str(e)}")
+
 
 GIT_METHOD_COLLETION = GitMethodCollection()
 APP.add_prompt(
@@ -177,4 +232,9 @@ APP.add_prompt(
     GIT_METHOD_COLLETION.git_cached_diff_prompt,
     name="git-cached-diff",
     description="Generate a diff between the files in the staging area (the index) and the HEAD",
+)
+APP.add_prompt(
+    GIT_METHOD_COLLETION.git_commit_messages_prompt,
+    name="git-commit-messages",
+    description="Get commit messages between the ancestor and HEAD",
 )
