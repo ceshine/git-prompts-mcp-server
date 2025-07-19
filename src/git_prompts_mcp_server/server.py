@@ -89,12 +89,14 @@ class GitMethodCollection:
         try:
             if self.json_format is True:
                 diff_str = _format_diff_results_as_json(diff_results)
+                format_str = "the JSON format"
             else:
                 diff_str = _format_diff_results_as_plain_text(diff_results)
+                format_str = "plain text"
 
             prompt_text = (
                 diff_str
-                + f"\n\nAbove is the diff results between HEAD and {ancestor} in {'the JSON format' if self.json_format else 'plain text'}.\n"
+                + f"\n\nAbove is the diff results between HEAD and {ancestor} in {format_str}.\n"
                 + (
                     "\nPlease provide a detailed description of the above changes proposed by a pull request. "
                     "Your description should include, but is not limited to, the following sections:\n\n"
