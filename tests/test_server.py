@@ -3,30 +3,33 @@ import json
 import shutil
 import asyncio
 import unittest
-from datetime import timezone
 from unittest.mock import patch, MagicMock
 
 import git
-from pydantic import ValidationError
-from git_prompts_mcp_server.server import GitMethodCollection, _format_diff_results_as_plain_text, _format_diff_results_as_json, _get_diff_results
+from mcp.types import TextContent
+
+from git_prompts_mcp_server.server import (
+    GitMethodCollection,
+    _format_diff_results_as_plain_text,
+    _format_diff_results_as_json,
+)
+
 
 class TestGitMethodCollection(unittest.TestCase):
     def setUp(self):
         self.test_dir = "test_repo"
         os.makedirs(self.test_dir, exist_ok=True)
-        repo = git.Repo.init(self.test_dir)
+        repo = git.Repo.init(self.test_dir, initial_branch="main")
         with open(os.path.join(self.test_dir, "file.txt"), "w") as f:
             f.write("initial content")
         repo.index.add(["file.txt"])
         repo.index.commit("initial commit")
-        os.environ["GIT_PROMPTS_MCP_SERVER_TESTING"] = "true"
         os.environ["GIT_REPOSITORY"] = self.test_dir
         os.environ["GIT_EXCLUDES"] = ""
         os.environ["GIT_OUTPUT_FORMAT"] = "text"
         self.git_methods = GitMethodCollection()
 
     def tearDown(self):
-        del os.environ["GIT_PROMPTS_MCP_SERVER_TESTING"]
         del os.environ["GIT_REPOSITORY"]
         del os.environ["GIT_EXCLUDES"]
         del os.environ["GIT_OUTPUT_FORMAT"]
@@ -82,7 +85,8 @@ class TestGitMethodCollection(unittest.TestCase):
         mock_get_diff_results.return_value = [diff1, diff2]
 
         # Test plain text format
-        prompt = asyncio.run(self.git_methods.generate_pr_desc_prompt("master"))
+        prompt = asyncio.run(self.git_methods.generate_pr_desc_prompt("main"))
+        assert isinstance(prompt.content, TextContent)
         self.assertIn("File: file1.txt -> file1.txt", prompt.content.text)
         self.assertIn("File: New Addition -> file2.txt", prompt.content.text)
         self.assertIn("plain text", prompt.content.text)
@@ -90,7 +94,8 @@ class TestGitMethodCollection(unittest.TestCase):
         # Test JSON format
         os.environ["GIT_OUTPUT_FORMAT"] = "json"
         self.git_methods = GitMethodCollection()
-        prompt = asyncio.run(self.git_methods.generate_pr_desc_prompt("master"))
+        prompt = asyncio.run(self.git_methods.generate_pr_desc_prompt("main"))
+        assert isinstance(prompt.content, TextContent)
         self.assertIn("the JSON format", prompt.content.text)
         # Reset to default
         os.environ["GIT_OUTPUT_FORMAT"] = "text"
@@ -105,6 +110,7 @@ class TestGitMethodCollection(unittest.TestCase):
 
         # Test plain text format
         prompt = asyncio.run(self.git_methods.git_cached_diff_prompt())
+        assert isinstance(prompt.content, TextContent)
         self.assertIn("File: New Addition -> file3.txt", prompt.content.text)
         self.assertIn("plain text", prompt.content.text)
 
@@ -112,6 +118,7 @@ class TestGitMethodCollection(unittest.TestCase):
         os.environ["GIT_OUTPUT_FORMAT"] = "json"
         self.git_methods = GitMethodCollection()
         prompt = asyncio.run(self.git_methods.git_cached_diff_prompt())
+        assert isinstance(prompt.content, TextContent)
         self.assertIn("the JSON format", prompt.content.text)
         # Reset to default
         os.environ["GIT_OUTPUT_FORMAT"] = "text"
@@ -133,7 +140,8 @@ class TestGitMethodCollection(unittest.TestCase):
         self.git_methods.repo.iter_commits = MagicMock(return_value=[mock_commit1, mock_commit2])
 
         # Test plain text format
-        prompt = asyncio.run(self.git_methods.git_commit_messages_prompt("master"))
+        prompt = asyncio.run(self.git_methods.git_commit_messages_prompt("main"))
+        assert isinstance(prompt.content, TextContent)
         self.assertIn("second commit", prompt.content.text)
         self.assertIn("initial commit", prompt.content.text)
 
@@ -141,7 +149,8 @@ class TestGitMethodCollection(unittest.TestCase):
         os.environ["GIT_OUTPUT_FORMAT"] = "json"
         self.git_methods = GitMethodCollection()
         self.git_methods.repo.iter_commits = MagicMock(return_value=[mock_commit1, mock_commit2])
-        prompt = asyncio.run(self.git_methods.git_commit_messages_prompt("master"))
+        prompt = asyncio.run(self.git_methods.git_commit_messages_prompt("main"))
+        assert isinstance(prompt.content, TextContent)
         data = json.loads(prompt.content.text)
         self.assertEqual(len(data), 2)
         self.assertEqual(data[0]["message"], "second commit")
@@ -163,7 +172,8 @@ class TestGitMethodCollection(unittest.TestCase):
         mock_get_diff_results.return_value = [diff1, diff2]
 
         # Test plain text format
-        prompt = asyncio.run(self.git_methods.git_diff_prompt("master"))
+        prompt = asyncio.run(self.git_methods.git_diff_prompt("main"))
+        assert isinstance(prompt.content, TextContent)
         self.assertIn("File: file1.txt -> file1.txt", prompt.content.text)
         self.assertIn("File: New Addition -> file2.txt", prompt.content.text)
         self.assertIn("plain text", prompt.content.text)
@@ -171,7 +181,8 @@ class TestGitMethodCollection(unittest.TestCase):
         # Test JSON format
         os.environ["GIT_OUTPUT_FORMAT"] = "json"
         self.git_methods = GitMethodCollection()
-        prompt = asyncio.run(self.git_methods.git_diff_prompt("master"))
+        prompt = asyncio.run(self.git_methods.git_diff_prompt("main"))
+        assert isinstance(prompt.content, TextContent)
         self.assertIn("the JSON format", prompt.content.text)
         # Reset to default
         os.environ["GIT_OUTPUT_FORMAT"] = "text"
