@@ -6,13 +6,14 @@ This repository provides a Model Context Protocol (MCP) server that offers sever
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ceshine-git-prompts-mcp-server-badge.png)](https://mseep.ai/app/ceshine-git-prompts-mcp-server)
 
+[![Tests](https://github.com/ceshine/git-prompts-mcp-server/actions/workflows/run_tests.yml/badge.svg)](https://github.com/ceshine/git-prompts-mcp-server/actions/workflows/run_tests.yml)
+
 ## Installation
 
 ### Manual Installation
 
 1. Clone this repository
 2. Install dependencies: `uv sync --frozen`
-
 
 ## Usage
 
@@ -84,7 +85,7 @@ The server responds to the following commands:
 
 1. `/git-diff <ancestor_branch_or_commit>`: Populate the diff results between HEAD and the specified ancestor branch or commit.
 2. `/generate-pr-desc <ancestor_branch_or_commit>`: Generate a pull request description based on the diff results between HEAD and the specified ancestor branch or commit.
-  - Note: This is largely the same as `/git-diff`, but it includes instructions for generating a pull request description at the end of the output.
+  a.  Note: This is largely the same as `/git-diff`, but it includes instructions for generating a pull request description at the end of the output.
 3. `/git-cached-diff`: Populate the diff results for the staged changes and HEAD.
 
 Examples:
