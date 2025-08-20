@@ -71,8 +71,9 @@ class TestGitMethodCollection(unittest.TestCase):
         self.assertEqual(data[1]["a_path"], "New Addition")
         self.assertIn("--- /dev/null", data[1]["diff"])
 
+    @patch("git_prompts_mcp_server.server._get_commit_history")
     @patch("git_prompts_mcp_server.server._get_diff_results")
-    def test_generate_pr_desc_prompt(self, mock_get_diff_results):
+    def test_generate_pr_desc_prompt(self, mock_get_diff_results, mock_get_commit_history):
         diff1 = MagicMock(spec=git.Diff)
         diff1.a_path = "file1.txt"
         diff1.b_path = "file1.txt"
@@ -84,11 +85,19 @@ class TestGitMethodCollection(unittest.TestCase):
         diff2.diff = b"--- /dev/null\n+++ b/file2.txt\n@@ -0,0 +1 @@\n+new file content"
         mock_get_diff_results.return_value = [diff1, diff2]
 
+        mock_commit = MagicMock()
+        mock_commit.hexsha = "abcdef"
+        mock_commit.author.name = "Test Author"
+        mock_commit.authored_datetime.astimezone().isoformat.return_value = "2023-01-01T12:00:00+00:00"
+        mock_commit.message = "feat: a new feature"
+        mock_get_commit_history.return_value = [mock_commit]
+
         # Test plain text format
         prompt = asyncio.run(self.git_methods.generate_pr_desc_prompt("main"))
         assert isinstance(prompt.content, TextContent)
         self.assertIn("File: file1.txt -> file1.txt", prompt.content.text)
         self.assertIn("File: New Addition -> file2.txt", prompt.content.text)
+        self.assertIn("feat: a new feature", prompt.content.text)
         self.assertIn("plain text", prompt.content.text)
 
         # Test JSON format
@@ -97,6 +106,13 @@ class TestGitMethodCollection(unittest.TestCase):
         prompt = asyncio.run(self.git_methods.generate_pr_desc_prompt("main"))
         assert isinstance(prompt.content, TextContent)
         self.assertIn("the JSON format", prompt.content.text)
+        # check the content
+        content_json = json.loads(prompt.content.text.split("\n\n")[0])
+        self.assertIn("commit_history", content_json)
+        self.assertIn("diff", content_json)
+        self.assertEqual(len(content_json["commit_history"]), 1)
+        self.assertEqual(content_json["commit_history"][0]["message"], "feat: a new feature")
+        self.assertEqual(len(content_json["diff"]), 2)
         # Reset to default
         os.environ["GIT_OUTPUT_FORMAT"] = "text"
 

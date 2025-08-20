@@ -2,7 +2,7 @@
 name = "git-prompts-mcp-server"
 version = "0.1.0"
 description = "Add your description here"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "gitpython>=3.1.44",
     "fastmcp>=2.0,<3.0",
