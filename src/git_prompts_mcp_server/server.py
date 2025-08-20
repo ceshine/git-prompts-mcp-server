@@ -31,19 +31,52 @@ def _format_diff_results_as_plain_text(diff_results: list[git.Diff]) -> str:
     )
 
 
+def _get_diff_results_as_json_obj(diff_results: list[git.Diff]) -> list[dict]:
+    return [
+        {
+            "a_path": item.a_path or "New Addition",
+            "b_path": item.b_path or "Deleted",
+            "diff": cast(bytes, item.diff).decode("utf-8"),
+        }
+        for item in diff_results
+    ]
+
+
 def _format_diff_results_as_json(diff_results: list[git.Diff]) -> str:
     return json.dumps(
-        [
-            {
-                "a_path": item.a_path or "New Addition",
-                "b_path": item.b_path or "Deleted",
-                "diff": cast(bytes, item.diff).decode("utf-8"),
-            }
-            for item in diff_results
-        ],
+        _get_diff_results_as_json_obj(diff_results),
         indent=2,
         ensure_ascii=False,
     )
+
+
+def _get_commit_history(repo: git.Repo, ancestor: str) -> list[git.Commit]:
+    return list(repo.iter_commits(rev=f"{ancestor}..HEAD"))
+
+
+def _format_commit_history_as_plain_text(commits: list[git.Commit], ancestor: str) -> str:
+    if not commits:
+        return f"No commits found between {ancestor} and HEAD."
+
+    commit_messages = ("\n\n" + "-" * 10 + "\n\n").join(
+        [
+            f"{commit.hexsha} by {str(commit.author)} at {commit.authored_datetime.astimezone(timezone.utc).isoformat()}\n\n{str(commit.message).strip()}"
+            for commit in commits
+        ]
+    )
+    return f"Commit messages between {ancestor} and HEAD:\n" + "-" * 10 + "\n\n" + commit_messages
+
+
+def _format_commit_history_as_json_obj(commits: list[git.Commit]) -> list[dict]:
+    return [
+        {
+            "hexsha": commit.hexsha,
+            "author": str(commit.author),
+            "create_time": commit.authored_datetime.astimezone(timezone.utc).isoformat(),
+            "message": str(commit.message).strip(),
+        }
+        for commit in commits
+    ]
 
 
 def _get_diff_results(
@@ -85,18 +118,27 @@ class GitMethodCollection:
             raise ValueError("Ancestor argument required")
 
         diff_results = _get_diff_results(self.repo.commit(ancestor), self.repo.head.commit, self.excludes)
+        commits = _get_commit_history(self.repo, ancestor)
 
         try:
             if self.json_format is True:
-                diff_str = _format_diff_results_as_json(diff_results)
+                commit_history_obj = _format_commit_history_as_json_obj(commits)
+                diff_obj = _get_diff_results_as_json_obj(diff_results)
+                data = {
+                    "commit_history": commit_history_obj,
+                    "diff": diff_obj,
+                }
+                content_str = json.dumps(data, indent=2, ensure_ascii=False)
                 format_str = "the JSON format"
             else:
+                commit_history_str = _format_commit_history_as_plain_text(commits, ancestor)
                 diff_str = _format_diff_results_as_plain_text(diff_results)
+                content_str = commit_history_str + "\n\n" + diff_str
                 format_str = "plain text"
 
             prompt_text = (
-                diff_str
-                + f"\n\nAbove is the diff results between HEAD and {ancestor} in {format_str}.\n"
+                content_str
+                + f"\n\nAbove is the commit history and diff results between HEAD and {ancestor} in {format_str}.\n"
                 + (
                     "\nPlease provide a detailed description of the above changes proposed by a pull request. "
                     "Your description should include, but is not limited to, the following sections:\n\n"
@@ -171,33 +213,14 @@ class GitMethodCollection:
             raise ValueError("Ancestor argument required")
 
         try:
-            commits = list(self.repo.iter_commits(rev=f"{ancestor}..HEAD"))
+            commits = _get_commit_history(self.repo, ancestor)
             if self.json_format is False:
-                if not commits:
-                    prompt_text = f"No commits found between {ancestor} and HEAD."
-                else:
-                    commit_messages = ("\n\n" + "-" * 10 + "\n\n").join(
-                        [
-                            f"{commit.hexsha} by {str(commit.author)} at {commit.authored_datetime.astimezone(timezone.utc).isoformat()}\n\n{str(commit.message).strip()}"
-                            for commit in commits
-                        ]
-                    )
-                    prompt_text = (
-                        f"Commit messages between {ancestor} and HEAD:\n" + "-" * 10 + "\n\n" + commit_messages
-                    )
+                prompt_text = _format_commit_history_as_plain_text(commits, ancestor)
             else:
                 if not commits:
                     prompt_text = json.dumps({"error_message": f"No commits found between {ancestor} and HEAD."})
                 else:
-                    commit_messages = [
-                        {
-                            "hexsha": commit.hexsha,
-                            "author": str(commit.author),
-                            "create_time": commit.authored_datetime.astimezone(timezone.utc).isoformat(),
-                            "message": str(commit.message).strip(),
-                        }
-                        for commit in commits
-                    ]
+                    commit_messages = _format_commit_history_as_json_obj(commits)
                     prompt_text = json.dumps(
                         commit_messages,
                         indent=2,
@@ -218,23 +241,41 @@ class GitMethodCollection:
 
 
 GIT_METHOD_COLLETION = GitMethodCollection()
-APP.add_prompt(
-    GIT_METHOD_COLLETION.generate_pr_desc_prompt,
+
+
+@APP.prompt(
     name="generate-pr-desc",
     description="Generate PR Description based on the diff between the HEAD and the ancestor branch or commit",
 )
-APP.add_prompt(
-    GIT_METHOD_COLLETION.git_diff_prompt,
+async def generate_pr_desc_wrapper(
+    ancestor: str = Field(..., description="The ancestor commit hash or branch name"),
+) -> PromptMessage:
+    return await GIT_METHOD_COLLETION.generate_pr_desc_prompt(ancestor)
+
+
+@APP.prompt(
     name="git-diff",
     description="Generate a diff between the HEAD and the ancestor branch or commit",
 )
-APP.add_prompt(
-    GIT_METHOD_COLLETION.git_cached_diff_prompt,
+async def git_diff_wrapper(
+    ancestor: str = Field(..., description="The ancestor commit hash or branch name"),
+) -> PromptMessage:
+    return await GIT_METHOD_COLLETION.git_diff_prompt(ancestor)
+
+
+@APP.prompt(
     name="git-cached-diff",
     description="Generate a diff between the files in the staging area (the index) and the HEAD",
 )
-APP.add_prompt(
-    GIT_METHOD_COLLETION.git_commit_messages_prompt,
+async def git_cached_diff_wrapper() -> PromptMessage:
+    return await GIT_METHOD_COLLETION.git_cached_diff_prompt()
+
+
+@APP.prompt(
     name="git-commit-messages",
     description="Get commit messages between the ancestor and HEAD",
 )
+async def git_commit_messages_wrapper(
+    ancestor: str = Field(..., description="The ancestor commit hash or branch name"),
+) -> PromptMessage:
+    return await GIT_METHOD_COLLETION.git_commit_messages_prompt(ancestor)
