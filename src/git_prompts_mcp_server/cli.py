@@ -8,6 +8,7 @@ Prerequiesite - These environment variables need to be set:
 """
 
 import asyncio
+import json
 
 import typer
 from fastmcp import Client
@@ -25,6 +26,42 @@ def git_cached_diff():
         async with CLIENT:
             result = await CLIENT.get_prompt("git-cached-diff")
             print(result.messages[0].content.text)  # type: ignore
+
+    asyncio.run(_internal_func())
+
+
+@TYPER_APP.command()
+def git_diff_tool(ancestor: str):
+    """Run the git-diff tool."""
+
+    async def _internal_func():
+        async with CLIENT:
+            result = await CLIENT.run_tool("git-diff", {"ancestor": ancestor})
+            print(json.dumps(result.data, indent=2))
+
+    asyncio.run(_internal_func())
+
+
+@TYPER_APP.command()
+def git_cached_diff_tool():
+    """Run the git-cached-diff tool."""
+
+    async def _internal_func():
+        async with CLIENT:
+            result = await CLIENT.run_tool("git-cached-diff", params={})
+            print(json.dumps(result.data, indent=2))
+
+    asyncio.run(_internal_func())
+
+
+@TYPER_APP.command()
+def git_commit_messages_tool(ancestor: str):
+    """Run the git-commit-messages tool."""
+
+    async def _internal_func():
+        async with CLIENT:
+            result = await CLIENT.run_tool("git-commit-messages", {"ancestor": ancestor})
+            print(json.dumps(result.data, indent=2))
 
     asyncio.run(_internal_func())
 
