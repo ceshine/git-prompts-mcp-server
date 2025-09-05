@@ -139,6 +139,47 @@ class TestGitMethodCollection(unittest.TestCase):
         # Reset to default
         os.environ["GIT_OUTPUT_FORMAT"] = "text"
 
+    @patch("git_prompts_mcp_server.server._get_diff_results")
+    def test_get_diff_data(self, mock_get_diff_results):
+        diff1 = MagicMock(spec=git.Diff)
+        diff1.a_path = "file1.txt"
+        diff1.b_path = "file1.txt"
+        diff1.diff = b"diff content"
+        mock_get_diff_results.return_value = [diff1]
+
+        data = asyncio.run(self.git_methods.get_diff_data("main"))
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["a_path"], "file1.txt")
+        self.assertEqual(data[0]["diff"], "diff content")
+
+    @patch("git_prompts_mcp_server.server._get_diff_results")
+    def test_get_cached_diff_data(self, mock_get_diff_results):
+        diff1 = MagicMock(spec=git.Diff)
+        diff1.a_path = None
+        diff1.b_path = "file2.txt"
+        diff1.diff = b"cached diff content"
+        mock_get_diff_results.return_value = [diff1]
+
+        data = asyncio.run(self.git_methods.get_cached_diff_data())
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["a_path"], "New Addition")
+        self.assertEqual(data[0]["b_path"], "file2.txt")
+        self.assertEqual(data[0]["diff"], "cached diff content")
+
+    @patch("git_prompts_mcp_server.server.git.Repo")
+    def test_get_commit_messages_data(self, mock_repo):
+        mock_commit = MagicMock()
+        mock_commit.hexsha = "12345"
+        mock_commit.author.name = "Test Author"
+        mock_commit.authored_datetime.astimezone().isoformat.return_value = "2023-01-01T12:00:00+00:00"
+        mock_commit.message = "a commit message"
+        self.git_methods.repo.iter_commits = MagicMock(return_value=[mock_commit])
+
+        data = asyncio.run(self.git_methods.get_commit_messages_data("main"))
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["hexsha"], "12345")
+        self.assertEqual(data[0]["message"], "a commit message")
+
     @patch("git_prompts_mcp_server.server.git.Repo")
     def test_git_commit_messages_prompt(self, mock_repo):
         mock_commit1 = MagicMock()
