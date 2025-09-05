@@ -31,7 +31,7 @@ def _format_diff_results_as_plain_text(diff_results: list[git.Diff]) -> str:
     )
 
 
-def _get_diff_results_as_json_obj(diff_results: list[git.Diff]) -> list[dict]:
+def _get_diff_results_as_list_of_dict(diff_results: list[git.Diff]) -> list[dict]:
     return [
         {
             "a_path": item.a_path or "New Addition",
@@ -44,7 +44,7 @@ def _get_diff_results_as_json_obj(diff_results: list[git.Diff]) -> list[dict]:
 
 def _format_diff_results_as_json(diff_results: list[git.Diff]) -> str:
     return json.dumps(
-        _get_diff_results_as_json_obj(diff_results),
+        _get_diff_results_as_list_of_dict(diff_results),
         indent=2,
         ensure_ascii=False,
     )
@@ -109,17 +109,17 @@ class GitMethodCollection:
             return
 
         self.excludes = os.environ["GIT_EXCLUDES"].split(",")
-        self.json_format = os.environ["GIT_OUTPUT_FORMAT"].lower() == "json"
+        self.json_format = os.environ.get("GIT_OUTPUT_FORMAT", "json").lower() == "json"
 
     async def get_diff_data(self, ancestor: str) -> list[dict]:
         if not ancestor:
             raise ValueError("Ancestor argument required")
         diff_results = _get_diff_results(self.repo.commit(ancestor), self.repo.head.commit, self.excludes)
-        return _get_diff_results_as_json_obj(diff_results)
+        return _get_diff_results_as_list_of_dict(diff_results)
 
     async def get_cached_diff_data(self) -> list[dict]:
         diff_results = _get_diff_results(self.repo.head.commit, None, self.excludes)
-        return _get_diff_results_as_json_obj(diff_results)
+        return _get_diff_results_as_list_of_dict(diff_results)
 
     async def get_commit_messages_data(self, ancestor: str) -> list[dict]:
         if not ancestor:
@@ -142,7 +142,7 @@ class GitMethodCollection:
         try:
             if self.json_format is True:
                 commit_history_obj = _format_commit_history_as_json_obj(commits)
-                diff_obj = _get_diff_results_as_json_obj(diff_results)
+                diff_obj = _get_diff_results_as_list_of_dict(diff_results)
                 data = {
                     "commit_history": commit_history_obj,
                     "diff": diff_obj,

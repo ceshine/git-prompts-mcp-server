@@ -1,14 +1,15 @@
 """CLI for testing the MCP methods.
 
-Prerequiesite - These environment variables need to be set:
+Prerequisite - These environment variables need to be set:
 
 1. `GIT_REPOSITORY`
-2. `GIT_OUTPUT_FORMAT`
-3. `GIT_EXCLUDES`
+2. `GIT_EXCLUDES`
+
+Note: `GIT_OUTPUT_FORMAT` is set to `json`.
 """
 
-import asyncio
 import json
+import asyncio
 
 import typer
 from fastmcp import Client
@@ -21,7 +22,7 @@ TYPER_APP = typer.Typer()
 
 
 @TYPER_APP.command()
-def git_cached_diff():
+def prompt_git_cached_diff():
     async def _internal_func():
         async with CLIENT:
             result = await CLIENT.get_prompt("git-cached-diff")
@@ -31,43 +32,55 @@ def git_cached_diff():
 
 
 @TYPER_APP.command()
-def git_diff_tool(ancestor: str):
+def tool_git_diff(ancestor: str):
     """Run the git-diff tool."""
 
     async def _internal_func():
         async with CLIENT:
-            result = await CLIENT.run_tool("git-diff", {"ancestor": ancestor})
-            print(json.dumps(result.data, indent=2))
+            result = await CLIENT.call_tool("git-diff", {"ancestor": ancestor})
+            if result.structured_content is not None:
+                print(json.dumps(result.structured_content["result"], indent=2))
+            else:
+                print("Got an empty response")
+                raise typer.Exit(1)
 
     asyncio.run(_internal_func())
 
 
 @TYPER_APP.command()
-def git_cached_diff_tool():
+def tool_git_cached_diff():
     """Run the git-cached-diff tool."""
 
     async def _internal_func():
         async with CLIENT:
-            result = await CLIENT.run_tool("git-cached-diff", params={})
-            print(json.dumps(result.data, indent=2))
+            result = await CLIENT.call_tool("git-cached-diff")
+            if result.structured_content is not None:
+                print(json.dumps(result.structured_content["result"], indent=2))
+            else:
+                print("Got an empty response")
+                raise typer.Exit(1)
 
     asyncio.run(_internal_func())
 
 
 @TYPER_APP.command()
-def git_commit_messages_tool(ancestor: str):
+def tool_git_commit_messages(ancestor: str):
     """Run the git-commit-messages tool."""
 
     async def _internal_func():
         async with CLIENT:
-            result = await CLIENT.run_tool("git-commit-messages", {"ancestor": ancestor})
-            print(json.dumps(result.data, indent=2))
+            result = await CLIENT.call_tool("git-commit-messages", {"ancestor": ancestor})
+            if result.structured_content is not None:
+                print(json.dumps(result.structured_content["result"], indent=2))
+            else:
+                print("Got an empty response")
+                raise typer.Exit(1)
 
     asyncio.run(_internal_func())
 
 
 @TYPER_APP.command()
-def git_commit_messages(ancestor: str):
+def prompt_git_commit_messages(ancestor: str):
     async def _internal_func():
         async with CLIENT:
             result = await CLIENT.get_prompt("git-commit-messages", {"ancestor": ancestor})
@@ -77,7 +90,7 @@ def git_commit_messages(ancestor: str):
 
 
 @TYPER_APP.command()
-def git_diff(ancestor: str):
+def prompt_git_diff(ancestor: str):
     async def _internal_func():
         async with CLIENT:
             result = await CLIENT.get_prompt("git-diff", {"ancestor": ancestor})
@@ -87,7 +100,7 @@ def git_diff(ancestor: str):
 
 
 @TYPER_APP.command()
-def generate_pr_desc(ancestor: str):
+def prompt_generate_pr_desc(ancestor: str):
     async def _internal_func():
         async with CLIENT:
             result = await CLIENT.get_prompt("generate-pr-desc", {"ancestor": ancestor})
