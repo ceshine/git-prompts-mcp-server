@@ -2,11 +2,14 @@
 
 This repository provides a Model Context Protocol (MCP) server that offers several commands to generate prompts based on the Git repository's content.
 
-(This repository draws heavy inspiration from [MarkItDown MCP server](https://github.com/KorigamiK/markitdown_mcp_server) and the example [Git MCP server](https://github.com/modelcontextprotocol/servers/tree/main/src/git).)
-
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ceshine-git-prompts-mcp-server-badge.png)](https://mseep.ai/app/ceshine-git-prompts-mcp-server)
 
 [![Tests](https://github.com/ceshine/git-prompts-mcp-server/actions/workflows/run_tests.yml/badge.svg)](https://github.com/ceshine/git-prompts-mcp-server/actions/workflows/run_tests.yml)
+
+## Acknowledgements
+
+- This repository draws heavy inspiration from [MarkItDown MCP server](https://github.com/KorigamiK/markitdown_mcp_server) and the example [Git MCP server](https://github.com/modelcontextprotocol/servers/tree/main/src/git).
+- The [AGENTS.md](./AGENTS.md) was adapted from the example sin this blog post: [Getting Good Results from Claude Code](https://www.dzombak.com/blog/2025/08/getting-good-results-from-claude-code/).
 
 ## Installation
 
