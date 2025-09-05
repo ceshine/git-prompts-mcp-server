@@ -99,7 +99,7 @@ Examples:
 
 ## Release Notes
 
-### 0.3.0
+### 0.3.0 (2025-09-05)
 
 - Implemented the MCP tool version of the three MCP prompts: `git-diff`, `generate-pr-desc`, and `git-cached-diff`. This allows for a more integrated experience with MCP-compatible clients.
 
