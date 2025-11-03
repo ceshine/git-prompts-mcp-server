@@ -4,6 +4,10 @@ This repository provides a Model Context Protocol (MCP) server that offers sever
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ceshine-git-prompts-mcp-server-badge.png)](https://mseep.ai/app/ceshine-git-prompts-mcp-server)
 
+<a href="https://glama.ai/mcp/servers/@ceshine/git-prompts-mcp-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@ceshine/git-prompts-mcp-server/badge" alt="Git Prompts Server MCP server" />
+</a>
+
 [![Tests](https://github.com/ceshine/git-prompts-mcp-server/actions/workflows/run_tests.yml/badge.svg)](https://github.com/ceshine/git-prompts-mcp-server/actions/workflows/run_tests.yml)
 
 ## Acknowledgements
