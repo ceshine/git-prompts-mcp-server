@@ -52,6 +52,22 @@ Add the following to your `settings.json`:
 }
 ```
 
+### As a Gemini CLI Extension
+
+To enable the commands and tools provided by this server in your Gemini CLI:
+
+1.  **Install the extension:**
+    ```bash
+    gemini extension install https://github.com/ceshine/git-prompts-mcp-server.git --auto-update
+    ```
+    This command will install the `git-prompts-mcp-server` as a Gemini CLI extension, making its prompts and tools available for use.
+2.  **Usage:**
+    Once installed, the prompts (e.g., `/git-diff`, `/generate-pr-desc`) and tools (e.g., `git_diff`, `git_cached_diff`) will be automatically available to your Gemini CLI sessions when run within a Git repository.
+
+
+**Important Caveat:** This extension relies on the current working directory being part of a Git repository (i.e., containing a `.git` subfolder). If the Gemini CLI is not run from the root of a Git project, the extension's commands and tools may not function as expected.
+
+
 #### Commands
 
 The server responds to the following commands:
