@@ -109,6 +109,12 @@ The server can be configured with the following environment variables, which can
 
 ## Release Notes
 
+### 0.3.1 (2025-12-10)
+
+- Added a new prompt `/generate-commit-message` to generate commit messages based on staged changes and recent commit history. It also highlights potential issues in the changes.
+- Added `gemini-extension.json` to support direct installation as a Gemini CLI extension.
+- Added support for `.pre-commit-config.yaml` for development.
+
 ### 0.3.0 (2025-09-05)
 
 - Implemented the MCP tool version of the three MCP prompts: `git-diff`, `generate-pr-desc`, and `git-cached-diff`. This allows for a more integrated experience with MCP-compatible clients.

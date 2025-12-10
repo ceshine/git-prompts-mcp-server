@@ -1,6 +1,6 @@
 [project]
 name = "git-prompts-mcp-server"
-version = "0.3.0"
+version = "0.3.1"
 description = "A Model Context Protocol (MCP) server that offers several commands to generate prompts based on the Git repository's content."
 requires-python = ">=3.12"
 dependencies = [
@@ -28,3 +28,6 @@ git-prompts-mcp-server = "git_prompts_mcp_server:entry_point"
 [[project.authors]]
 name = "Ceshine Lee"
 email = "shuanck@gmail.com"
+
+[tool.pyright]
+reportCallInDefaultInitializer = false
