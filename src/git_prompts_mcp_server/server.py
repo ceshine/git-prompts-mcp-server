@@ -130,30 +130,45 @@ class GitMethodCollection:
         except git.GitCommandError as e:
             raise ValueError(f"Error executing Git command: {str(e)}")
 
+    def _get_formatted_context(
+        self, diff_ancestor: str, commit_ancestor: str | None, diff_target: str | None = "HEAD"
+    ) -> tuple[str, str, list[git.Diff], int]:
+        source_commit = self.repo.commit(diff_ancestor)
+        target_commit = self.repo.commit(diff_target) if diff_target else None
+
+        diff_results = _get_diff_results(source_commit, target_commit, self.excludes)
+        if commit_ancestor:
+            commits = _get_commit_history(self.repo, commit_ancestor)
+        else:
+            commits = []
+
+        if self.json_format:
+            commit_history_obj = _format_commit_history_as_json_obj(commits)
+            diff_obj = _get_diff_results_as_list_of_dict(diff_results)
+            data = {
+                "commit_history": commit_history_obj,
+                "diff": diff_obj,
+            }
+            content_str = json.dumps(data, indent=2, ensure_ascii=False)
+            format_str = "the JSON format"
+        else:
+            diff_str = _format_diff_results_as_plain_text(diff_results)
+            if commit_ancestor:
+                commit_history_str = _format_commit_history_as_plain_text(commits, commit_ancestor)
+                content_str = commit_history_str + "\n\n" + diff_str
+            else:
+                content_str = diff_str
+            format_str = "plain text"
+        return content_str, format_str, diff_results, len(commits)
+
     async def generate_pr_desc_prompt(
         self, ancestor: str = Field(..., description="The ancestor commit hash or branch name")
     ) -> PromptMessage:
         if not ancestor:
             raise ValueError("Ancestor argument required")
 
-        diff_results = _get_diff_results(self.repo.commit(ancestor), self.repo.head.commit, self.excludes)
-        commits = _get_commit_history(self.repo, ancestor)
-
         try:
-            if self.json_format is True:
-                commit_history_obj = _format_commit_history_as_json_obj(commits)
-                diff_obj = _get_diff_results_as_list_of_dict(diff_results)
-                data = {
-                    "commit_history": commit_history_obj,
-                    "diff": diff_obj,
-                }
-                content_str = json.dumps(data, indent=2, ensure_ascii=False)
-                format_str = "the JSON format"
-            else:
-                commit_history_str = _format_commit_history_as_plain_text(commits, ancestor)
-                diff_str = _format_diff_results_as_plain_text(diff_results)
-                content_str = commit_history_str + "\n\n" + diff_str
-                format_str = "plain text"
+            content_str, format_str, _, _ = self._get_formatted_context(ancestor, ancestor, "HEAD")
 
             prompt_text = (
                 content_str
@@ -175,6 +190,55 @@ class GitMethodCollection:
             )
         except Exception as e:
             raise ValueError(f"Error generating the final prompt for generate-pr-desc: {str(e)}")
+
+    async def generate_commit_message_prompt(self, num_commits: int = 5) -> PromptMessage:
+        try:
+            if num_commits > 0:
+                commit_ancestor = f"HEAD~{num_commits}"
+            else:
+                commit_ancestor = None
+
+            content_str, format_str, diff_results, actual_num_commits = self._get_formatted_context(
+                "HEAD", commit_ancestor, None
+            )
+
+            if len(diff_results) == 0:
+                return PromptMessage(
+                    role="user",
+                    content=TextContent(
+                        type="text",
+                        text="Let the user know that there are no staged changes to generate a commit message for. If there are unstaged changes, ask if they would like to stage them. Instruct the user to rerun the command after staging the changes.",
+                    ),
+                )
+
+            if actual_num_commits > 0:
+                context_desc = f" and the commit message from the last {actual_num_commits} commits"
+            else:
+                context_desc = ""
+
+            prompt_text = f"""
+Create a commit message for the staged changes in Git. Wrap the generated message in a Markdown triple-backtick block. Example:
+
+```markdown
+This is a Git commit message.
+```
+
+Additionally, point out any potential issues in the changes at the end of the output, outside the triple-backtick block.
+
+
+Here are the staged changes{context_desc} in {format_str}:
+
+{content_str}
+"""
+            return PromptMessage(
+                role="user",
+                content=TextContent(
+                    type="text",
+                    text=prompt_text,
+                ),
+            )
+        except Exception as e:
+            raise ValueError(f"Error generating the final prompt for generate-commit-message: {str(e)}")
 
     async def git_diff_prompt(
         self, ancestor: str = Field(..., description="The ancestor commit hash or branch name")
@@ -270,6 +334,18 @@ async def generate_pr_desc_wrapper(
     ancestor: str = Field(..., description="The ancestor commit hash or branch name"),
 ) -> PromptMessage:
     return await GIT_METHOD_COLLETION.generate_pr_desc_prompt(ancestor)
+
+
+@APP.prompt(
+    name="generate-commit-message",
+    description="Generate commit message based on the diff between the files in the staging area (the index) and the HEAD",
+)
+async def generate_commit_message_wrapper(
+    num_commits: int = Field(
+        5, description="Number of recent commit messages to include in the context. Set to 0 to exclude history."
+    ),
+) -> PromptMessage:
+    return await GIT_METHOD_COLLETION.generate_commit_message_prompt(num_commits)
 
 
 @APP.prompt(

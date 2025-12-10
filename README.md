@@ -76,6 +76,7 @@ The server responds to the following commands:
 2. `/generate-pr-desc <ancestor_branch_or_commit>`: Generate a pull request description based on the diff results and commit history between HEAD and the specified ancestor branch or commit.
 3. `/git-cached-diff`: Populate the diff results for the staged changes and HEAD.
 4. `/git-commit-messages <ancestor_branch_or_commit>`: Get commit messages between the ancestor and HEAD.
+5. `/generate-commit-message [num_commits]`: Generate commit message based on the diff between the files in the staging area (the index) and the HEAD. Additionally, it points out any potential issues in the changes at the end of the output. `num_commits` defaults to 5. Set to 0 to exclude commit history.
 
 Examples:
 
@@ -83,6 +84,7 @@ Examples:
 2. `/git-diff dev`
 3. `/git-cached-diff`
 4. `/git-commit-messages main`
+5. `/generate-commit-message` or `/generate-commit-message 3`
 
 #### Tools
 

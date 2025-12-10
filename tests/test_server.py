@@ -243,3 +243,64 @@ class TestGitMethodCollection(unittest.TestCase):
         self.assertIn("the JSON format", prompt.content.text)
         # Reset to default
         os.environ["GIT_OUTPUT_FORMAT"] = "text"
+
+    @patch("git_prompts_mcp_server.server._get_commit_history")
+    @patch("git_prompts_mcp_server.server._get_diff_results")
+    def test_generate_commit_message_prompt(self, mock_get_diff_results, mock_get_commit_history):
+        # Case 1: No staged changes
+        mock_get_diff_results.return_value = []
+        prompt = asyncio.run(self.git_methods.generate_commit_message_prompt())
+        assert isinstance(prompt.content, TextContent)
+        self.assertIn("no staged changes", prompt.content.text)
+
+        # Setup for other cases
+        diff1 = MagicMock(spec=git.Diff)
+        diff1.a_path = None
+        diff1.b_path = "file1.txt"
+        diff1.diff = b"--- /dev/null\n+++ b/file1.txt\n@@ -0,0 +1 @@\n+staged content"
+        mock_get_diff_results.return_value = [diff1]
+
+        mock_commit = MagicMock()
+        mock_commit.hexsha = "12345"
+        mock_commit.author.name = "Test Author"
+        mock_commit.authored_datetime.astimezone().isoformat.return_value = "2023-01-01T12:00:00+00:00"
+        mock_commit.message = "recent commit"
+        mock_get_commit_history.return_value = [mock_commit]
+
+        # Case 2: Staged changes, text format, default history (5)
+        prompt = asyncio.run(self.git_methods.generate_commit_message_prompt())
+        assert isinstance(prompt.content, TextContent)
+        self.assertIn("Create a commit message", prompt.content.text)
+        self.assertIn("plain text", prompt.content.text)
+        self.assertIn("File: New Addition -> file1.txt", prompt.content.text)
+        self.assertIn("recent commit", prompt.content.text)
+        self.assertIn("last 1 commits", prompt.content.text)
+
+        # Case 3: Staged changes, JSON format
+        os.environ["GIT_OUTPUT_FORMAT"] = "json"
+        self.git_methods = GitMethodCollection()
+        prompt = asyncio.run(self.git_methods.generate_commit_message_prompt())
+        assert isinstance(prompt.content, TextContent)
+        self.assertIn("the JSON format", prompt.content.text)
+
+        # Verify JSON content keys presence
+        self.assertIn('"diff": [', prompt.content.text)
+        self.assertIn('"commit_history": [', prompt.content.text)
+        self.assertIn("recent commit", prompt.content.text)
+
+        # Reset to default
+        os.environ["GIT_OUTPUT_FORMAT"] = "text"
+        self.git_methods = GitMethodCollection()
+
+        # Case 4: No history (num_commits=0)
+        mock_get_commit_history.reset_mock()
+        prompt = asyncio.run(self.git_methods.generate_commit_message_prompt(num_commits=0))
+        self.assertIn("Create a commit message", prompt.content.text)
+        self.assertNotIn("recent commit", prompt.content.text)
+        self.assertNotIn("last 5 commits", prompt.content.text)
+        mock_get_commit_history.assert_not_called()
+
+        # Case 5: Custom history (num_commits=3)
+        prompt = asyncio.run(self.git_methods.generate_commit_message_prompt(num_commits=3))
+        self.assertIn("last 1 commits", prompt.content.text)
+        mock_get_commit_history.assert_called()
