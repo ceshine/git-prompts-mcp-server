@@ -21,73 +21,33 @@ This repository provides a Model Context Protocol (MCP) server that offers sever
 - This repository draws heavy inspiration from [MarkItDown MCP server](https://github.com/KorigamiK/markitdown_mcp_server) and the example [Git MCP server](https://github.com/modelcontextprotocol/servers/tree/main/src/git).
 - The [AGENTS.md](./AGENTS.md) was adapted from the example sin this blog post: [Getting Good Results from Claude Code](https://www.dzombak.com/blog/2025/08/getting-good-results-from-claude-code/).
 
-## Installation
-
-### Manual Installation
-
-1. Clone this repository
-2. Install dependencies: `uv sync --frozen`
-
 ## Usage
+
+Prerequisites: Python 3.12+ and [uv](https://github.com/astral-sh/uv)
 
 ### As a MCP Server for Zed Editor
 
 Add the following to your `settings.json`:
 
-#### Since Zed version 0.194.3
-
-* Source of the change: "Use standardised format for configuring MCP Servers" ([#33539](https://github.com/zed-industries/zed/pull/33539))
-
 ```json
 "context_servers": {
   "git_prompt_mcp": {
-    "source": "custom",
-    "command": "uv",
+    "command": "uvx",
     "args": [
-    "--directory",
-    "/path/to/local/git_prompts_mcp_server",
-    "run",
-    "git-prompts-mcp-server",
-    "/path/to/repo/", // parent folder of the .git directory
-    "--excludes", // exclude files and directories from diff results (the server use fnmatch in the backend)
-    "*/uv.lock",
-    "--excludes",
-    "uv.lock",
-    "--excludes",
-    ".gitignore",
-    "--format", // format for diff results
-    "json"  // options: json, text
+      "--from",
+      "git+https://github.com/ceshine/git-prompts-mcp-server.git",
+      "git-prompts-mcp-server",
+      "/path/to/repo/", // parent folder of the .git directory
+      "--excludes", // exclude files and directories from diff results (the server use fnmatch in the backend)
+      "*/uv.lock",
+      "--excludes",
+      "uv.lock",
+      "--excludes",
+      ".gitignore",
+      "--format", // format for diff results
+      "json"  // options: json, text
     ],
     "env": {}
-  }
-}
-```
-
-#### Prior to Zed version 0.194.3
-
-```json
-"context_servers": {
-  "git_prompt_mcp": {
-    "source": "custom",  // This is required for Zed version 0.193.x.
-    "command": {
-      "path": "uv",
-      "args": [
-        "--directory",
-        "/path/to/local/git_prompts_mcp_server",
-        "run",
-        "git-prompts-mcp-server",
-        "/path/to/repo/", // parent folder of the .git directory
-        "--excludes", // exclude files and directories from diff results (the server use fnmatch in the backend)
-        "*/uv.lock",
-        "--excludes",
-        "uv.lock",
-        "--excludes",
-        ".gitignore",
-        "--format", // format for diff results
-        "json"  // options: json, text
-      ]
-    },
-    "settings": {}
   }
 }
 ```
@@ -123,6 +83,11 @@ The server can be configured with the following environment variables, which can
 - `GIT_REPOSITORY`: The path to the Git repository. This is automatically passed by Zed.
 - `GIT_EXCLUDES`: A comma-separated list of file patterns to exclude from the diff results (e.g., `"*/uv.lock,*.log"`).
 - `GIT_OUTPUT_FORMAT`: The output format for the diff results. Can be `json` (default) or `text`.
+
+## Development
+
+1. Clone this repository
+2. Install dependencies: `uv sync --frozen`
 
 ## Release Notes
 

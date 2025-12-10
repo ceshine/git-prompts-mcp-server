@@ -18,7 +18,7 @@ dev = [
     "pytest-env>=1.1.5",
 ]
 
-[build-system]
+[build-system]  # A build system is required to support [project.scripts]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
