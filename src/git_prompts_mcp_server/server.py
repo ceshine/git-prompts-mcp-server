@@ -31,7 +31,7 @@ def _format_diff_results_as_plain_text(diff_results: list[git.Diff]) -> str:
     )
 
 
-def _get_diff_results_as_list_of_dict(diff_results: list[git.Diff]) -> list[dict]:
+def _get_diff_results_as_list_of_dict(diff_results: list[git.Diff]) -> list[dict[str, str]]:
     return [
         {
             "a_path": item.a_path or "New Addition",
@@ -67,7 +67,7 @@ def _format_commit_history_as_plain_text(commits: list[git.Commit], ancestor: st
     return f"Commit messages between {ancestor} and HEAD:\n" + "-" * 10 + "\n\n" + commit_messages
 
 
-def _format_commit_history_as_json_obj(commits: list[git.Commit]) -> list[dict]:
+def _format_commit_history_as_json_obj(commits: list[git.Commit]) -> list[dict[str, str]]:
     return [
         {
             "hexsha": commit.hexsha,
@@ -111,17 +111,17 @@ class GitMethodCollection:
         self.excludes = os.environ["GIT_EXCLUDES"].split(",")
         self.json_format = os.environ.get("GIT_OUTPUT_FORMAT", "json").lower() == "json"
 
-    async def get_diff_data(self, ancestor: str) -> list[dict]:
+    async def get_diff_data(self, ancestor: str) -> list[dict[str, str]]:
         if not ancestor:
             raise ValueError("Ancestor argument required")
         diff_results = _get_diff_results(self.repo.commit(ancestor), self.repo.head.commit, self.excludes)
         return _get_diff_results_as_list_of_dict(diff_results)
 
-    async def get_cached_diff_data(self) -> list[dict]:
+    async def get_cached_diff_data(self) -> list[dict[str, str]]:
         diff_results = _get_diff_results(self.repo.head.commit, None, self.excludes)
         return _get_diff_results_as_list_of_dict(diff_results)
 
-    async def get_commit_messages_data(self, ancestor: str) -> list[dict]:
+    async def get_commit_messages_data(self, ancestor: str) -> list[dict[str, str]]:
         if not ancestor:
             raise ValueError("Ancestor argument required")
         try:
@@ -307,7 +307,7 @@ async def git_commit_messages_wrapper(
 )
 async def git_diff_tool(
     ancestor: str = Field(..., description="The ancestor commit hash or branch name"),
-) -> list[dict]:
+) -> list[dict[str, str]]:
     return await GIT_METHOD_COLLETION.get_diff_data(ancestor)
 
 
@@ -315,7 +315,7 @@ async def git_diff_tool(
     name="git-cached-diff",
     description="Get a diff between the files in the staging area (the index) and the HEAD",
 )
-async def git_cached_diff_tool() -> list[dict]:
+async def git_cached_diff_tool() -> list[dict[str, str]]:
     return await GIT_METHOD_COLLETION.get_cached_diff_data()
 
 
@@ -325,5 +325,5 @@ async def git_cached_diff_tool() -> list[dict]:
 )
 async def git_commit_messages_tool(
     ancestor: str = Field(..., description="The ancestor commit hash or branch name"),
-) -> list[dict]:
+) -> list[dict[str, str]]:
     return await GIT_METHOD_COLLETION.get_commit_messages_data(ancestor)

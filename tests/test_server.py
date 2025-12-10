@@ -17,7 +17,7 @@ from git_prompts_mcp_server.server import (
 
 class TestGitMethodCollection(unittest.TestCase):
     def setUp(self):
-        self.test_dir = "test_repo"
+        self.test_dir = "test_repo"  # pyright: ignore[reportUninitializedInstanceVariable]
         os.makedirs(self.test_dir, exist_ok=True)
         repo = git.Repo.init(self.test_dir, initial_branch="main")
         with open(os.path.join(self.test_dir, "file.txt"), "w") as f:
@@ -27,7 +27,7 @@ class TestGitMethodCollection(unittest.TestCase):
         os.environ["GIT_REPOSITORY"] = self.test_dir
         os.environ["GIT_EXCLUDES"] = ""
         os.environ["GIT_OUTPUT_FORMAT"] = "text"
-        self.git_methods = GitMethodCollection()
+        self.git_methods = GitMethodCollection()  # pyright: ignore[reportUninitializedInstanceVariable]
 
     def tearDown(self):
         del os.environ["GIT_REPOSITORY"]
