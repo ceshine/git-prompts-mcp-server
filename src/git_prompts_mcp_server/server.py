@@ -3,7 +3,7 @@ import json
 import logging
 from fnmatch import fnmatch
 from datetime import timezone
-from typing import cast
+from typing import cast, Annotated
 
 import git
 from fastmcp import FastMCP
@@ -131,7 +131,10 @@ class GitMethodCollection:
             raise ValueError(f"Error executing Git command: {str(e)}")
 
     def _get_formatted_context(
-        self, diff_ancestor: str, commit_ancestor: str | None, diff_target: str | None = "HEAD"
+        self,
+        diff_ancestor: str,
+        commit_ancestor: str | None,
+        diff_target: str | None = "HEAD",
     ) -> tuple[str, str, list[git.Diff], int]:
         source_commit = self.repo.commit(diff_ancestor)
         target_commit = self.repo.commit(diff_target) if diff_target else None
@@ -162,7 +165,7 @@ class GitMethodCollection:
         return content_str, format_str, diff_results, len(commits)
 
     async def generate_pr_desc_prompt(
-        self, ancestor: str = Field(..., description="The ancestor commit hash or branch name")
+        self, ancestor: Annotated[str, Field(..., description="The ancestor commit hash or branch name")]
     ) -> PromptMessage:
         if not ancestor:
             raise ValueError("Ancestor argument required")
@@ -241,7 +244,7 @@ Here are the staged changes{context_desc} in {format_str}:
             raise ValueError(f"Error generating the final prompt for generate-commit-message: {str(e)}")
 
     async def git_diff_prompt(
-        self, ancestor: str = Field(..., description="The ancestor commit hash or branch name")
+        self, ancestor: Annotated[str, Field(..., description="The ancestor commit hash or branch name")]
     ) -> PromptMessage:
         if not ancestor:
             raise ValueError("Ancestor argument required")
@@ -290,7 +293,8 @@ Here are the staged changes{context_desc} in {format_str}:
             raise ValueError(f"Error generating the final prompt for git-cached-diff: {str(e)}")
 
     async def git_commit_messages_prompt(
-        self, ancestor: str = Field(..., description="The ancestor commit hash or branch name")
+        self,
+        ancestor: Annotated[str, Field(..., description="The ancestor commit hash or branch name")],
     ) -> PromptMessage:
         if not ancestor:
             raise ValueError("Ancestor argument required")
@@ -323,7 +327,7 @@ Here are the staged changes{context_desc} in {format_str}:
             raise ValueError(f"Error generating the final prompt for get-commit-messages: {str(e)}")
 
 
-GIT_METHOD_COLLETION = GitMethodCollection()
+GIT_METHOD_COLLECTION = GitMethodCollection()
 
 
 @APP.prompt(
@@ -331,9 +335,12 @@ GIT_METHOD_COLLETION = GitMethodCollection()
     description="Generate PR Description based on the diff between the HEAD and the ancestor branch or commit",
 )
 async def generate_pr_desc_wrapper(
-    ancestor: str = Field(..., description="The ancestor commit hash or branch name"),
+    ancestor: Annotated[str, Field(..., description="The ancestor commit hash or branch name")],
 ) -> PromptMessage:
-    return await GIT_METHOD_COLLETION.generate_pr_desc_prompt(ancestor)
+    LOGGER.info(
+        "Generating PR descriptions based on the diff between the HEAD and the ancestor branch or commit (%s)", ancestor
+    )
+    return await GIT_METHOD_COLLECTION.generate_pr_desc_prompt(ancestor)
 
 
 @APP.prompt(
@@ -341,11 +348,15 @@ async def generate_pr_desc_wrapper(
     description="Generate commit message based on the diff between the files in the staging area (the index) and the HEAD",
 )
 async def generate_commit_message_wrapper(
-    num_commits: int = Field(
-        5, description="Number of recent commit messages to include in the context. Set to 0 to exclude history."
-    ),
+    num_commits: Annotated[
+        int,
+        Field(description="Number of recent commit messages to include in the context. Set to 0 to exclude history."),
+    ] = 5,
 ) -> PromptMessage:
-    return await GIT_METHOD_COLLETION.generate_commit_message_prompt(num_commits)
+    LOGGER.info("Using %d recent commits to generate commit message", num_commits)
+    if num_commits < 0:
+        raise ValueError("Number of commits must be zero or a positive integer")
+    return await GIT_METHOD_COLLECTION.generate_commit_message_prompt(num_commits)
 
 
 @APP.prompt(
@@ -353,9 +364,9 @@ async def generate_commit_message_wrapper(
     description="Generate a diff between the HEAD and the ancestor branch or commit",
 )
 async def git_diff_wrapper(
-    ancestor: str = Field(..., description="The ancestor commit hash or branch name"),
+    ancestor: Annotated[str, Field(..., description="The ancestor commit hash or branch name")],
 ) -> PromptMessage:
-    return await GIT_METHOD_COLLETION.git_diff_prompt(ancestor)
+    return await GIT_METHOD_COLLECTION.git_diff_prompt(ancestor)
 
 
 @APP.prompt(
@@ -363,7 +374,7 @@ async def git_diff_wrapper(
     description="Generate a diff between the files in the staging area (the index) and the HEAD",
 )
 async def git_cached_diff_wrapper() -> PromptMessage:
-    return await GIT_METHOD_COLLETION.git_cached_diff_prompt()
+    return await GIT_METHOD_COLLECTION.git_cached_diff_prompt()
 
 
 @APP.prompt(
@@ -371,9 +382,9 @@ async def git_cached_diff_wrapper() -> PromptMessage:
     description="Get commit messages between the ancestor and HEAD",
 )
 async def git_commit_messages_wrapper(
-    ancestor: str = Field(..., description="The ancestor commit hash or branch name"),
+    ancestor: Annotated[str, Field(..., description="The ancestor commit hash or branch name")],
 ) -> PromptMessage:
-    return await GIT_METHOD_COLLETION.git_commit_messages_prompt(ancestor)
+    return await GIT_METHOD_COLLECTION.git_commit_messages_prompt(ancestor)
 
 
 # Tools
@@ -382,9 +393,9 @@ async def git_commit_messages_wrapper(
     description="Get a diff between the HEAD and the ancestor branch or commit",
 )
 async def git_diff_tool(
-    ancestor: str = Field(..., description="The ancestor commit hash or branch name"),
+    ancestor: Annotated[str, Field(..., description="The ancestor commit hash or branch name")],
 ) -> list[dict[str, str]]:
-    return await GIT_METHOD_COLLETION.get_diff_data(ancestor)
+    return await GIT_METHOD_COLLECTION.get_diff_data(ancestor)
 
 
 @APP.tool(
@@ -392,7 +403,7 @@ async def git_diff_tool(
     description="Get a diff between the files in the staging area (the index) and the HEAD",
 )
 async def git_cached_diff_tool() -> list[dict[str, str]]:
-    return await GIT_METHOD_COLLETION.get_cached_diff_data()
+    return await GIT_METHOD_COLLECTION.get_cached_diff_data()
 
 
 @APP.tool(
@@ -400,6 +411,6 @@ async def git_cached_diff_tool() -> list[dict[str, str]]:
     description="Get commit messages between the ancestor and HEAD",
 )
 async def git_commit_messages_tool(
-    ancestor: str = Field(..., description="The ancestor commit hash or branch name"),
+    ancestor: Annotated[str, Field(..., description="The ancestor commit hash or branch name")],
 ) -> list[dict[str, str]]:
-    return await GIT_METHOD_COLLETION.get_commit_messages_data(ancestor)
+    return await GIT_METHOD_COLLECTION.get_commit_messages_data(ancestor)

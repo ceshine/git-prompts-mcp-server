@@ -144,5 +144,18 @@ def prompt_generate_pr_desc(ancestor: str):
     _ = run_sync(_internal_func())
 
 
+@TYPER_APP.command()
+def prompt_generate_commit_message(num_commits: int | None = None):
+    async def _internal_func():
+        async with CLIENT:
+            if num_commits is not None:
+                result = await CLIENT.get_prompt("generate-commit-message", {"num_commits": num_commits})
+            else:
+                result = await CLIENT.get_prompt("generate-commit-message")
+            print(result.messages[0].content.text)  # pyright: ignore[reportAttributeAccessIssue]
+
+    _ = run_sync(_internal_func())
+
+
 if __name__ == "__main__":
     TYPER_APP()
