@@ -109,6 +109,12 @@ The server can be configured with the following environment variables, which can
 
 ## Release Notes
 
+### 0.3.2 (2026-01-02)
+
+- **Updated FastMCP prompt argument type hints to use `Annotated[..., Field(...)]`, so FastMCP correctly applies defaults when the client does not provide values for optional arguments.**
+- Added a new CLI command `prompt-generate-commit-message` to generate commit messages via the `/generate-commit-message` prompt, with optional `--num-commits`.
+- Fixed a typo by renaming `GIT_METHOD_COLLETION` to `GIT_METHOD_COLLECTION`, and added logging plus validation to reject negative `num_commits`.
+
 ### 0.3.1 (2025-12-10)
 
 - Added a new prompt `/generate-commit-message` to generate commit messages based on staged changes and recent commit history. It also highlights potential issues in the changes.
