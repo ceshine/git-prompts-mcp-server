@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from fnmatch import fnmatch
+from pathlib import PurePath
 from datetime import timezone
 from typing import cast, Annotated
 
@@ -79,6 +79,19 @@ def _format_commit_history_as_json_obj(commits: list[git.Commit]) -> list[dict[s
     ]
 
 
+def _should_exclude(path: str | None, excludes: list[str]) -> bool:
+    if not path:
+        return False
+    path_obj = PurePath(path)
+    for pattern in excludes:
+        if path_obj.match(pattern):
+            return True
+        # Workaround for root-level files when matching **/ patterns on Python versions before 3.13
+        if pattern.startswith("**/") and path_obj.match(pattern[3:]):
+            return True
+    return False
+
+
 def _get_diff_results(
     source_commit: git.Commit, target_commit: git.Commit | None, excludes: list[str]
 ) -> list[git.Diff]:
@@ -89,13 +102,11 @@ def _get_diff_results(
     else:
         diff_results = source_commit.diff(target_commit, create_patch=True)
 
-    for exclude_pattern in excludes:
-        diff_results = [
-            item
-            for item in diff_results
-            if not fnmatch(item.a_path or "", exclude_pattern) and not fnmatch(item.b_path or "", exclude_pattern)
-        ]
-    return diff_results
+    return [
+        item
+        for item in diff_results
+        if not _should_exclude(item.a_path, excludes) and not _should_exclude(item.b_path, excludes)
+    ]
 
 
 class GitMethodCollection:

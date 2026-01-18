@@ -38,12 +38,8 @@ Add the following to your `settings.json`:
       "git+https://github.com/ceshine/git-prompts-mcp-server.git",
       "git-prompts-mcp-server",
       "/path/to/repo/", // parent folder of the .git directory
-      "--excludes", // exclude files and directories from diff results (the server use fnmatch in the backend)
-      "*/uv.lock",
-      "--excludes",
-      "uv.lock",
-      "--excludes",
-      ".gitignore",
+      "--excludes", // Exclude files and directories from diff results (the server uses pathlib.PurePath behind the scenes)
+      "**/uv.lock",
       "--format", // format for diff results
       "json"  // options: json, text
     ],

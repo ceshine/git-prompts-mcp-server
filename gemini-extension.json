@@ -11,8 +11,6 @@
         "${workspacePath}",
         "--excludes",
         "**/*.lock",
-        "--excludes",
-        "**/.gitignore",
         "--format",
         "json"
       ]
