@@ -12,6 +12,7 @@ from git_prompts_mcp_server.server import (
     GitMethodCollection,
     _format_diff_results_as_plain_text,
     _format_diff_results_as_json,
+    generate_commit_message_wrapper,
 )
 
 
@@ -304,3 +305,31 @@ class TestGitMethodCollection(unittest.TestCase):
         prompt = asyncio.run(self.git_methods.generate_commit_message_prompt(num_commits=3))
         self.assertIn("last 1 commits", prompt.content.text)
         mock_get_commit_history.assert_called()
+
+
+class TestWrappers(unittest.IsolatedAsyncioTestCase):
+    @patch("git_prompts_mcp_server.server.GIT_METHOD_COLLECTION.generate_commit_message_prompt")
+    async def test_generate_commit_message_wrapper_valid_int(self, mock_prompt):
+        mock_prompt.return_value = "mock prompt"
+        result = await generate_commit_message_wrapper.fn(num_commits="10")
+        self.assertEqual(result, "mock prompt")
+        mock_prompt.assert_called_once_with(10)
+
+    @patch("git_prompts_mcp_server.server.GIT_METHOD_COLLECTION.generate_commit_message_prompt")
+    async def test_generate_commit_message_wrapper_workaround(self, mock_prompt):
+        mock_prompt.return_value = "mock prompt"
+        result = await generate_commit_message_wrapper.fn(num_commits="$1")
+        self.assertEqual(result, "mock prompt")
+        mock_prompt.assert_called_once_with(5)
+
+    @patch("git_prompts_mcp_server.server.GIT_METHOD_COLLECTION.generate_commit_message_prompt")
+    async def test_generate_commit_message_wrapper_invalid_str(self, mock_prompt):
+        with self.assertRaises(ValueError) as cm:
+            await generate_commit_message_wrapper.fn(num_commits="abc")
+        self.assertIn("Number of commits must be an integer", str(cm.exception))
+
+    @patch("git_prompts_mcp_server.server.GIT_METHOD_COLLECTION.generate_commit_message_prompt")
+    async def test_generate_commit_message_wrapper_negative_int(self, mock_prompt):
+        with self.assertRaises(ValueError) as cm:
+            await generate_commit_message_wrapper.fn(num_commits="-1")
+        self.assertIn("Number of commits must be zero or a positive integer", str(cm.exception))

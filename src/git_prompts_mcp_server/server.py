@@ -233,6 +233,7 @@ Here are the staged changes{context_desc} in {format_str}:
 
 {content_str}
 """
+            LOGGER.debug("Prompt generated:\n%s", prompt_text)
             return PromptMessage(
                 role="user",
                 content=TextContent(
@@ -337,6 +338,10 @@ GIT_METHOD_COLLECTION = GitMethodCollection()
 async def generate_pr_desc_wrapper(
     ancestor: Annotated[str, Field(..., description="The ancestor commit hash or branch name")],
 ) -> PromptMessage:
+    if ancestor == "$1":
+        # Workaround for template-based workflow (e.g., OpenCode)
+        # Always use the main branch as the ancestor
+        ancestor = "main"
     LOGGER.info(
         "Generating PR descriptions based on the diff between the HEAD and the ancestor branch or commit (%s)", ancestor
     )
@@ -349,14 +354,29 @@ async def generate_pr_desc_wrapper(
 )
 async def generate_commit_message_wrapper(
     num_commits: Annotated[
-        int,
-        Field(description="Number of recent commit messages to include in the context. Set to 0 to exclude history."),
-    ] = 5,
+        str,
+        Field(
+            "5", description="Number of recent commit messages to include in the context. Set to 0 to exclude history."
+        ),
+    ] = "5",
 ) -> PromptMessage:
-    LOGGER.info("Using %d recent commits to generate commit message", num_commits)
-    if num_commits < 0:
+    try:
+        if num_commits == "$1":
+            # Workaround for template-based workflow (e.g., OpenCode)
+            # Always use the default number of commit number
+            num_commits_int = 5
+        else:
+            num_commits_int = int(num_commits)
+    except ValueError as e:
+        LOGGER.error("Number of commits (%s) must be an integer: %s", num_commits, e)
+        raise ValueError(f"Number of commits must be an integer: {e}")
+    LOGGER.info(
+        "Generating a commit message based on the staged changes and commit messages from %s previous commits",
+        num_commits_int,
+    )
+    if num_commits_int < 0:
         raise ValueError("Number of commits must be zero or a positive integer")
-    return await GIT_METHOD_COLLECTION.generate_commit_message_prompt(num_commits)
+    return await GIT_METHOD_COLLECTION.generate_commit_message_prompt(num_commits_int)
 
 
 @APP.prompt(
@@ -366,6 +386,7 @@ async def generate_commit_message_wrapper(
 async def git_diff_wrapper(
     ancestor: Annotated[str, Field(..., description="The ancestor commit hash or branch name")],
 ) -> PromptMessage:
+    LOGGER.info("Getting diff between HEAD and ancestor %s", ancestor)
     return await GIT_METHOD_COLLECTION.git_diff_prompt(ancestor)
 
 
@@ -374,6 +395,7 @@ async def git_diff_wrapper(
     description="Generate a diff between the files in the staging area (the index) and the HEAD",
 )
 async def git_cached_diff_wrapper() -> PromptMessage:
+    LOGGER.info("Getting cached diff")
     return await GIT_METHOD_COLLECTION.git_cached_diff_prompt()
 
 
@@ -384,6 +406,7 @@ async def git_cached_diff_wrapper() -> PromptMessage:
 async def git_commit_messages_wrapper(
     ancestor: Annotated[str, Field(..., description="The ancestor commit hash or branch name")],
 ) -> PromptMessage:
+    LOGGER.info("Getting commit messages starting from %s to HEAD", ancestor)
     return await GIT_METHOD_COLLECTION.git_commit_messages_prompt(ancestor)
 
 
