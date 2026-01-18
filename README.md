@@ -105,6 +105,13 @@ The server can be configured with the following environment variables, which can
 
 ## Release Notes
 
+### 0.3.3 (2026-01-18)
+
+- **Transitioned exclusion logic from `fnmatch` to `pathlib.PurePath`** for more robust and idiomatic path matching, including a workaround for root-level file matching in older Python versions.
+- **Added support for `$1` placeholders in prompts** to handle template-based workflows (e.g., OpenCode), with defaults provided for these cases.
+- **Enhanced logging and observability** across prompt and tool wrappers with more detailed debug and info-level messages.
+- Added a new test suite specifically for verifying path exclusion patterns.
+
 ### 0.3.2 (2026-01-02)
 
 - **Updated FastMCP prompt argument type hints to use `Annotated[..., Field(...)]`, so FastMCP correctly applies defaults when the client does not provide values for optional arguments.**

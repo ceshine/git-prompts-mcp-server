@@ -1,6 +1,6 @@
 {
   "name": "git-prompts-helpers",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "mcpServers": {
     "git-prompts-mcp-server": {
       "command": "uvx",

@@ -1,6 +1,6 @@
 [project]
 name = "git-prompts-mcp-server"
-version = "0.3.2"
+version = "0.3.3"
 description = "A Model Context Protocol (MCP) server that offers several commands to generate prompts based on the Git repository's content."
 requires-python = ">=3.12"
 dependencies = [
