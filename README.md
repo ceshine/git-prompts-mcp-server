@@ -88,6 +88,7 @@ The server also provides the following tools for MCP-compatible clients:
 
 - `git-diff`: Get a diff between the HEAD and the ancestor branch or commit.
 - `git-cached-diff`: Get a diff between the files in the staging area (the index) and the HEAD.
+- `git-unstaged-diff`: Get a diff between the working tree and the staging area (equivalent to `git diff`).
 - `git-commit-messages`: Get commit messages between the ancestor and HEAD.
 
 #### Environment Variables
@@ -104,6 +105,11 @@ The server can be configured with the following environment variables, which can
 2. Install dependencies: `uv sync --frozen`
 
 ## Release Notes
+
+### 0.3.4 (2026-03-24)
+
+- **Added `git-unstaged-diff` MCP tool** to expose working tree changes (equivalent to `git diff`), along with a corresponding `tool-git-unstaged-diff` CLI command.
+- **Added `git-prompts-mcp-cli` installed script entry point** in `pyproject.toml`, making the CLI directly invokable after installation without going through `uv run python -m`.
 
 ### 0.3.3 (2026-01-18)
 
