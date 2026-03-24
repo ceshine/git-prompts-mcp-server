@@ -99,6 +99,22 @@ def tool_git_cached_diff():
 
 
 @TYPER_APP.command()
+def tool_git_unstaged_diff():
+    """Run the git-unstaged-diff tool."""
+
+    async def _internal_func():
+        async with CLIENT:
+            result = await CLIENT.call_tool("git-unstaged-diff")
+            if result.structured_content is not None:
+                print(json.dumps(result.structured_content["result"], indent=2))
+            else:
+                print("Got an empty response")
+                raise typer.Exit(1)
+
+    _ = run_sync(_internal_func())
+
+
+@TYPER_APP.command()
 def tool_git_commit_messages(ancestor: str):
     """Run the git-commit-messages tool."""
 

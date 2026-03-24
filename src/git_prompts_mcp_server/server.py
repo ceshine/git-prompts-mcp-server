@@ -93,14 +93,17 @@ def _should_exclude(path: str | None, excludes: list[str]) -> bool:
 
 
 def _get_diff_results(
-    source_commit: git.Commit, target_commit: git.Commit | None, excludes: list[str]
+    repo: git.Repo, source_commit: git.Commit | None, target_commit: git.Commit | None, excludes: list[str]
 ) -> list[git.Diff]:
-    if target_commit is None:
+    if source_commit is None and target_commit is None:
+        # index vs working tree (strictly unstaged changes, equivalent to `git diff`)
+        diff_results = repo.index.diff(None, create_patch=True)
+    elif target_commit is None:
         # Note: source_commit.diff() compares source with the index (staged changes)
         #       source_commit.diff(None) compares source with the working tree
-        diff_results = source_commit.diff(create_patch=True)
+        diff_results = cast(git.Commit, source_commit).diff(create_patch=True)
     else:
-        diff_results = source_commit.diff(target_commit, create_patch=True)
+        diff_results = cast(git.Commit, source_commit).diff(target_commit, create_patch=True)
 
     return [
         item
@@ -125,11 +128,15 @@ class GitMethodCollection:
     async def get_diff_data(self, ancestor: str) -> list[dict[str, str]]:
         if not ancestor:
             raise ValueError("Ancestor argument required")
-        diff_results = _get_diff_results(self.repo.commit(ancestor), self.repo.head.commit, self.excludes)
+        diff_results = _get_diff_results(self.repo, self.repo.commit(ancestor), self.repo.head.commit, self.excludes)
         return _get_diff_results_as_list_of_dict(diff_results)
 
     async def get_cached_diff_data(self) -> list[dict[str, str]]:
-        diff_results = _get_diff_results(self.repo.head.commit, None, self.excludes)
+        diff_results = _get_diff_results(self.repo, self.repo.head.commit, None, self.excludes)
+        return _get_diff_results_as_list_of_dict(diff_results)
+
+    async def get_unstaged_diff_data(self) -> list[dict[str, str]]:
+        diff_results = _get_diff_results(self.repo, None, None, self.excludes)
         return _get_diff_results_as_list_of_dict(diff_results)
 
     async def get_commit_messages_data(self, ancestor: str) -> list[dict[str, str]]:
@@ -150,7 +157,7 @@ class GitMethodCollection:
         source_commit = self.repo.commit(diff_ancestor)
         target_commit = self.repo.commit(diff_target) if diff_target else None
 
-        diff_results = _get_diff_results(source_commit, target_commit, self.excludes)
+        diff_results = _get_diff_results(self.repo, source_commit, target_commit, self.excludes)
         if commit_ancestor:
             commits = _get_commit_history(self.repo, commit_ancestor)
         else:
@@ -261,7 +268,7 @@ Here are the staged changes{context_desc} in {format_str}:
         if not ancestor:
             raise ValueError("Ancestor argument required")
 
-        diff_results = _get_diff_results(self.repo.commit(ancestor), self.repo.head.commit, self.excludes)
+        diff_results = _get_diff_results(self.repo, self.repo.commit(ancestor), self.repo.head.commit, self.excludes)
         try:
             if self.json_format is True:
                 diff_str = _format_diff_results_as_json(diff_results)
@@ -283,7 +290,7 @@ Here are the staged changes{context_desc} in {format_str}:
             raise ValueError(f"Error generating the final prompt for git-diff: {str(e)}")
 
     async def git_cached_diff_prompt(self) -> PromptMessage:
-        diff_results = _get_diff_results(self.repo.head.commit, None, self.excludes)
+        diff_results = _get_diff_results(self.repo, self.repo.head.commit, None, self.excludes)
         try:
             if self.json_format is True:
                 diff_str = _format_diff_results_as_json(diff_results)
@@ -438,6 +445,14 @@ async def git_diff_tool(
 )
 async def git_cached_diff_tool() -> list[dict[str, str]]:
     return await GIT_METHOD_COLLECTION.get_cached_diff_data()
+
+
+@APP.tool(
+    name="git-unstaged-diff",
+    description="Get a diff between the files in the working tree and the staging area (the index), i.e. unstaged changes",
+)
+async def git_unstaged_diff_tool() -> list[dict[str, str]]:
+    return await GIT_METHOD_COLLECTION.get_unstaged_diff_data()
 
 
 @APP.tool(

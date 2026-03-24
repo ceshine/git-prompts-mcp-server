@@ -167,6 +167,37 @@ class TestGitMethodCollection(unittest.TestCase):
         self.assertEqual(data[0]["b_path"], "file2.txt")
         self.assertEqual(data[0]["diff"], "cached diff content")
 
+    @patch("git_prompts_mcp_server.server._get_diff_results")
+    def test_get_unstaged_diff_data(self, mock_get_diff_results):
+        diff1 = MagicMock(spec=git.Diff)
+        diff1.a_path = "file3.txt"
+        diff1.b_path = "file3.txt"
+        diff1.diff = b"unstaged diff content"
+        mock_get_diff_results.return_value = [diff1]
+
+        data = asyncio.run(self.git_methods.get_unstaged_diff_data())
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["a_path"], "file3.txt")
+        self.assertEqual(data[0]["b_path"], "file3.txt")
+        self.assertEqual(data[0]["diff"], "unstaged diff content")
+
+        # Verify _get_diff_results was called with (repo, None, None, excludes)
+        mock_get_diff_results.assert_called_once_with(self.git_methods.repo, None, None, self.git_methods.excludes)
+
+    @patch("git_prompts_mcp_server.server._get_diff_results")
+    def test_get_unstaged_diff_data_new_file(self, mock_get_diff_results):
+        diff1 = MagicMock(spec=git.Diff)
+        diff1.a_path = None
+        diff1.b_path = "untracked.txt"
+        diff1.diff = b"new unstaged content"
+        mock_get_diff_results.return_value = [diff1]
+
+        data = asyncio.run(self.git_methods.get_unstaged_diff_data())
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["a_path"], "New Addition")
+        self.assertEqual(data[0]["b_path"], "untracked.txt")
+        self.assertEqual(data[0]["diff"], "new unstaged content")
+
     @patch("git_prompts_mcp_server.server.git.Repo")
     def test_get_commit_messages_data(self, mock_repo):
         mock_commit = MagicMock()
