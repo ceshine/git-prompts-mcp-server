@@ -173,5 +173,9 @@ def prompt_generate_commit_message(num_commits: int | None = None):
     _ = run_sync(_internal_func())
 
 
-if __name__ == "__main__":
+def cli_entry_point() -> None:
     TYPER_APP()
+
+
+if __name__ == "__main__":
+    cli_entry_point()

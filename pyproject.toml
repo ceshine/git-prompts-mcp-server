@@ -24,6 +24,7 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 git-prompts-mcp-server = "git_prompts_mcp_server:entry_point"
+git-prompts-mcp-cli = "git_prompts_mcp_server.cli:cli_entry_point"
 
 [[project.authors]]
 name = "Ceshine Lee"
