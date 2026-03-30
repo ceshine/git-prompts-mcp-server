@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add Git Tools MCP"
+  short_description: "Add the git_tools MCP server to a repository-local Codex config."
+  default_prompt: "Use this skill when Codex needs to add the git_tools MCP server to a repository by updating the local .codex/config.toml file."
